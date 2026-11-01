@@ -42,8 +42,10 @@ from .models import (
     RawUrlsBatchRequest,
 )
 from .storage import (
+    bootstrap_env_cookies,
     clear_all_history,
     delete_history_item,
+    get_cookies_base64,
     load_history,
     load_settings,
     save_settings,
@@ -105,6 +107,7 @@ def _prune_downloads_folder() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    bootstrap_env_cookies()
     stop_ev = asyncio.Event()
 
     async def _cleanup_worker() -> None:
@@ -458,7 +461,9 @@ async def api_clear_history(delete_files: bool = Query(False)) -> dict:
 
 @app.get("/api/cookies")
 async def api_get_cookies() -> dict:
-    return load_settings()
+    data = load_settings()
+    data["cookies_base64"] = get_cookies_base64()
+    return data
 
 
 @app.post("/api/cookies")

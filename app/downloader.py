@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
+import httpx
 import yt_dlp
+from yt_dlp.networking.impersonate import ImpersonateTarget
 from yt_dlp.utils import DownloadCancelled, download_range_func
 
 from .config import (
@@ -117,7 +119,7 @@ def sanitize_filename(name: str, max_len: int = 110) -> str:
     return cleaned[:max_len].strip(" ._")
 
 
-def _base_ydl_opts(apply_cookies: bool = True) -> dict[str, Any]:
+def _base_ydl_opts(apply_cookies: bool = True, target_url: str | None = None) -> dict[str, Any]:
     opts: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
@@ -135,12 +137,33 @@ def _base_ydl_opts(apply_cookies: bool = True) -> dict[str, Any]:
     if shutil.which("node"):
         opts["js_runtimes"] = {"node": {}}
 
+    host = urlparse(target_url or "").netloc.lower()
+    is_yt = "youtube" in host or "youtu.be" in host
+
+    if not is_yt:
+        try:
+            opts["impersonate"] = ImpersonateTarget("chrome")
+        except Exception:
+            pass
+    elif CLOUD_MODE:
+        ext_args: dict[str, Any] = {
+            "youtube": {
+                "player_client": ["mweb", "tv_embedded", "ios", "web"],
+            }
+        }
+        bgutil_script = Path("/opt/bgutil/server/build/generate_once.js")
+        if bgutil_script.exists():
+            ext_args["youtubepot-bgutilscript"] = {
+                "script_path": [str(bgutil_script)],
+            }
+        opts["extractor_args"] = ext_args
+
     if apply_cookies:
         settings = load_settings()
         mode = settings.get("cookie_mode", "none")
         if mode == "file" and COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 10:
             opts["cookiefile"] = str(COOKIES_FILE)
-        elif mode == "browser":
+        elif mode == "browser" and not CLOUD_MODE:
             browser = settings.get("cookie_browser", "chrome")
             opts["cookiesfrombrowser"] = (browser,)
 
@@ -149,15 +172,16 @@ def _base_ydl_opts(apply_cookies: bool = True) -> dict[str, Any]:
 
 def _is_cookie_lock_error(exc: Exception) -> bool:
     msg = str(exc).lower()
-    keywords = (
-        "cookie",
+    lock_phrases = (
         "dpapi",
-        "could not copy",
-        "permission denied",
-        "decrypt",
+        "could not copy chrome",
+        "could not copy edge",
+        "could not copy brave",
+        "failed to decrypt",
         "app-bound",
+        "database is locked",
     )
-    return any(k in msg for k in keywords)
+    return any(p in msg for p in lock_phrases)
 
 
 def _friendly_error_message(exc: Exception) -> str:
@@ -168,20 +192,21 @@ def _friendly_error_message(exc: Exception) -> str:
 
     if _is_cookie_lock_error(exc):
         return (
-            "Tarayıcı çerezlerine erişilemedi (Windows üzerinde Chrome/Edge açıkken çerez "
-            "veritabanını şifreler/kilitler). Lütfen üst menüdeki 'Çerezler' bölümünden "
-            "cookies.txt yükleyin veya Firefox seçin."
+            "Tarayıcı çerez veritabanı kilitli (Windows üzerinde Chrome/Edge açıkken "
+            "şifrelenir). Lütfen üst menüdeki '🍪 Çerezler' bölümünden cookies.txt yükleyin."
         )
-    if "not a bot" in lower or "sign in to confirm" in lower:
+    if (
+        "not a bot" in lower
+        or "sign in to confirm" in lower
+        or "--cookies" in lower
+        or "login required" in lower
+        or "rate-limit reached" in lower
+        or "granting access" in lower
+    ):
         return (
-            "Bulut sunucu IP'si için YouTube bot doğrulaması istedi. Sağ üstteki "
-            "'🍪 Çerezler' menüsünden cookies.txt dosyanızı ekleyerek YouTube videolarını "
-            "7/24 kesintisiz indirebilirsiniz."
-        )
-    if "login required" in lower or "sign in" in lower or "rate-limit reached" in lower:
-        return (
-            "Bu içerik giriş yapmayı gerektiriyor (Instagram/X kısıtlaması). Üst menüdeki "
-            "'Çerezler (Cookie)' ayarından tarayıcı çerezinizi ekleyip tekrar deneyin."
+            "Platform doğrulama istedi (Bulut sunucu IP koruması veya giriş gerektiren içerik). "
+            "Sağ üstteki '🍪 Çerezler' butonuna tıklayıp cookies.txt dosyanızı bir kez yükleyerek "
+            "YouTube ve Instagram videolarını sorunsuz indirebilirsiniz."
         )
     if "private video" in lower or "private account" in lower:
         return "Bu video gizli bir hesaba ait. Erişim izniniz olan hesap çerezini ekleyin."
@@ -323,13 +348,70 @@ def _build_format_options(info: dict[str, Any]) -> list[FormatOption]:
     return result
 
 
+def _try_social_api_fallback(url: str) -> dict[str, Any] | None:
+    """Zero-cookie fallback for X/Twitter (fxtwitter) and TikTok (tikwm) on cloud IPs."""
+    parsed = urlparse(url)
+    host = parsed.netloc.lower()
+
+    # 1) X / Twitter public video fallback via api.fxtwitter.com
+    if "x.com" in host or "twitter.com" in host:
+        m = re.search(r"/([^/?#]+)/status/(\d+)", parsed.path)
+        if m:
+            user, tid = m.group(1), m.group(2)
+            try:
+                with httpx.Client(timeout=12.0, headers={"User-Agent": "OmniIndir/1.1"}) as c:
+                    r = c.get(f"https://api.fxtwitter.com/{user}/status/{tid}")
+                    if r.status_code == 200:
+                        tweet = (r.json() or {}).get("tweet") or {}
+                        videos = ((tweet.get("media") or {}).get("videos")) or []
+                        if videos:
+                            v0 = videos[0]
+                            return {
+                                "id": tid,
+                                "title": (tweet.get("text") or f"X Video @{user}")[:110],
+                                "uploader": (tweet.get("author") or {}).get("name") or user,
+                                "duration": v0.get("duration"),
+                                "thumbnail": v0.get("thumbnail_url"),
+                                "direct_url": v0["url"],
+                                "webpage_url": url,
+                                "platform": "X (Twitter)",
+                            }
+            except Exception:
+                pass
+
+    # 2) TikTok watermark-free HD fallback via tikwm.com
+    if "tiktok.com" in host:
+        try:
+            with httpx.Client(timeout=12.0, headers={"User-Agent": "Mozilla/5.0"}) as c:
+                r = c.post("https://www.tikwm.com/api/", data={"url": url, "hd": "1"})
+                if r.status_code == 200:
+                    payload = r.json() or {}
+                    data = payload.get("data") or {}
+                    play_url = data.get("hdplay") or data.get("play")
+                    if payload.get("code") == 0 and play_url:
+                        return {
+                            "id": str(data.get("id") or uuid.uuid4().hex[:8]),
+                            "title": (data.get("title") or "TikTok Video")[:110],
+                            "uploader": (data.get("author") or {}).get("nickname"),
+                            "duration": data.get("duration"),
+                            "thumbnail": data.get("cover"),
+                            "direct_url": play_url,
+                            "webpage_url": url,
+                            "platform": "TikTok",
+                        }
+        except Exception:
+            pass
+
+    return None
+
+
 def analyze_url(raw_url: str, include_playlist: bool = False) -> AnalyzeResponse:
     url = extract_clean_url(raw_url)
     has_playlist_param, playlist_url = _check_youtube_playlist_hint(url)
     want_playlist = include_playlist or _is_explicit_playlist_url(url)
 
     def _extract(use_cookies: bool) -> dict[str, Any]:
-        opts = _base_ydl_opts(apply_cookies=use_cookies)
+        opts = _base_ydl_opts(apply_cookies=use_cookies, target_url=url)
         if want_playlist:
             opts["extract_flat"] = "in_playlist"
             opts["noplaylist"] = False
@@ -348,9 +430,53 @@ def analyze_url(raw_url: str, include_playlist: bool = False) -> AnalyzeResponse
         if _is_cookie_lock_error(exc):
             try:
                 info = _extract(use_cookies=False)
-            except Exception:
-                raise ValueError(_friendly_error_message(exc)) from exc
+            except Exception as inner_exc:
+                fb = _try_social_api_fallback(url)
+                if fb:
+                    return AnalyzeResponse(
+                        is_playlist=False,
+                        id=fb["id"],
+                        url=fb["direct_url"],
+                        webpage_url=fb["webpage_url"],
+                        title=fb["title"],
+                        uploader=fb["uploader"],
+                        duration=fb["duration"],
+                        thumbnail=fb["thumbnail"],
+                        platform=fb["platform"],
+                        formats=[
+                            FormatOption(
+                                id="best",
+                                label="En Yüksek Kalite (MP4)",
+                                ext="mp4",
+                                has_h264=True,
+                                badge="HD",
+                            )
+                        ],
+                    )
+                raise ValueError(_friendly_error_message(inner_exc)) from inner_exc
         else:
+            fb = _try_social_api_fallback(url)
+            if fb:
+                return AnalyzeResponse(
+                    is_playlist=False,
+                    id=fb["id"],
+                    url=fb["direct_url"],
+                    webpage_url=fb["webpage_url"],
+                    title=fb["title"],
+                    uploader=fb["uploader"],
+                    duration=fb["duration"],
+                    thumbnail=fb["thumbnail"],
+                    platform=fb["platform"],
+                    formats=[
+                        FormatOption(
+                            id="best",
+                            label="En Yüksek Kalite (MP4)",
+                            ext="mp4",
+                            has_h264=True,
+                            badge="HD",
+                        )
+                    ],
+                )
             raise ValueError(_friendly_error_message(exc)) from exc
 
     platform = detect_platform(url, info.get("extractor_key") or info.get("extractor"))
@@ -362,7 +488,7 @@ def analyze_url(raw_url: str, include_playlist: bool = False) -> AnalyzeResponse
             single = raw_entries[0]
             if not single.get("formats"):
                 target_u = single.get("webpage_url") or single.get("url") or url
-                opts2 = _base_ydl_opts(apply_cookies=True)
+                opts2 = _base_ydl_opts(apply_cookies=True, target_url=target_u)
                 opts2["noplaylist"] = True
                 try:
                     with yt_dlp.YoutubeDL(opts2) as ydl:
@@ -722,12 +848,30 @@ class DownloadQueueManager:
                     shutil.rmtree(job_temp_dir, ignore_errors=True)
                     return
             else:
-                job.status = "error"
-                job.error = _friendly_error_message(exc)
-                job.status_text = "Hata oluştu"
-                self._bump()
-                shutil.rmtree(job_temp_dir, ignore_errors=True)
-                return
+                fb = _try_social_api_fallback(job.url)
+                if fb:
+                    try:
+                        job.url = fb["direct_url"]
+                        if job.title == "Bağlantı hazırlanıyor..." and fb.get("title"):
+                            job.title = fb["title"]
+                        if not job.thumbnail and fb.get("thumbnail"):
+                            job.thumbnail = fb["thumbnail"]
+                        job.platform = fb["platform"]
+                        final_path = self._execute_ytdlp(job, job_temp_dir, use_cookies=False)
+                    except Exception:
+                        job.status = "error"
+                        job.error = _friendly_error_message(exc)
+                        job.status_text = "Hata oluştu"
+                        self._bump()
+                        shutil.rmtree(job_temp_dir, ignore_errors=True)
+                        return
+                else:
+                    job.status = "error"
+                    job.error = _friendly_error_message(exc)
+                    job.status_text = "Hata oluştu"
+                    self._bump()
+                    shutil.rmtree(job_temp_dir, ignore_errors=True)
+                    return
 
         try:
             if job.req.mode == "video":
@@ -803,7 +947,7 @@ class DownloadQueueManager:
             shutil.rmtree(job_temp_dir, ignore_errors=True)
 
     def _execute_ytdlp(self, job: DownloadJob, temp_dir: Path, use_cookies: bool) -> Path:
-        opts = _base_ydl_opts(apply_cookies=use_cookies)
+        opts = _base_ydl_opts(apply_cookies=use_cookies, target_url=job.url)
         if job.req.playlist_item:
             opts["noplaylist"] = False
             opts["playlist_items"] = str(job.req.playlist_item)

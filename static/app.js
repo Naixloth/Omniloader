@@ -120,9 +120,11 @@
     if (settings.has_cookie_file) {
       badge.textContent = "✅ Kayıtlı cookies.txt dosyası mevcut ve kullanıma hazır.";
       badge.style.color = "#34d399";
+      $("btnCopyCookieB64").classList.toggle("hidden", !Boolean(state.system && state.system.cloud_mode));
     } else {
       badge.textContent = "ℹ️ Henüz yüklenmiş bir cookies.txt dosyası yok.";
       badge.style.color = "#94a3b8";
+      $("btnCopyCookieB64").classList.add("hidden");
     }
     syncCookieSections();
   }
@@ -958,6 +960,20 @@
         $("cookieTextArea").value = "";
         updateCookieUI(updated);
         toast("Çerez dosyası silindi.");
+      } catch (err) {
+        toast(err.message, "error");
+      }
+    });
+
+    $("btnCopyCookieB64").addEventListener("click", async () => {
+      try {
+        const data = await api("/api/cookies");
+        if (!data.cookies_base64) {
+          toast("Önce bir cookies.txt dosyası yükleyin.", "error");
+          return;
+        }
+        await navigator.clipboard.writeText(data.cookies_base64);
+        toast("COOKIES_BASE64 kodu panoya kopyalandı! Render -> Environment kısmına yapıştırabilirsiniz.", "success");
       } catch (err) {
         toast(err.message, "error");
       }

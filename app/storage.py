@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import json
+import os
 import threading
 from pathlib import Path
 from typing import Any
@@ -14,6 +16,31 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "cookie_browser": "chrome",
     "max_concurrent": 2,
 }
+
+
+def bootstrap_env_cookies() -> None:
+    """Restore cookies.txt from COOKIES_BASE64 env var on ephemeral cloud containers."""
+    b64 = os.environ.get("COOKIES_BASE64", "").strip()
+    if not b64:
+        return
+    if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 10:
+        return
+    try:
+        decoded = base64.b64decode(b64).decode("utf-8", errors="replace").strip()
+        if decoded:
+            if "# Netscape HTTP Cookie File" not in decoded and "\t" in decoded:
+                decoded = "# Netscape HTTP Cookie File\n" + decoded
+            COOKIES_FILE.write_text(decoded + "\n", encoding="utf-8")
+            save_settings({"cookie_mode": "file"})
+    except Exception:
+        pass
+
+
+def get_cookies_base64() -> str | None:
+    if not COOKIES_FILE.exists() or COOKIES_FILE.stat().st_size <= 10:
+        return None
+    raw = COOKIES_FILE.read_bytes()
+    return base64.b64encode(raw).decode("ascii")
 
 
 def load_settings() -> dict[str, Any]:
