@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#090d16" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Omniİndir" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <title>Omniİndir — Evrensel Video & Ses İndirici</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <img src="/icon.svg" alt="Omniİndir Logo" class="brand-logo" />
+        <div>
+          <h1 class="brand-title">Omniİndir</h1>
+          <p class="brand-subtitle">YouTube • Instagram • X • TikTok • 1800+ Site</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="btnCookies" class="pill-btn" type="button" title="Giriş gerektiren Instagram/X videoları için çerez ayarları">
+          <span class="dot" id="cookieStatusDot"></span>
+          <span>🍪 Çerezler</span>
+        </button>
+        <button id="btnIphoneModal" class="pill-btn pill-primary" type="button" title="iPhone 15 ile bağlan">
+          <span>📱 iPhone 15 Bağlantısı</span>
+        </button>
+        <button id="btnLogout" class="pill-btn hidden" type="button" title="Oturumu kilitle">
+          <span>🔒 Kilitle</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-grid">
+    <!-- Left / Primary Column -->
+    <section class="primary-col">
+      <!-- Mode Switcher & URL Card -->
+      <div class="glass-card hero-card">
+        <div class="mode-tabs" role="tablist">
+          <button class="mode-tab active" data-tab="single" type="button">
+            🔗 Tekli Link / Oynatma Listesi
+          </button>
+          <button class="mode-tab" data-tab="batch" type="button">
+            📚 Toplu Link İndir
+          </button>
+        </div>
+
+        <!-- Single / Playlist Panel -->
+        <div id="tabSingle" class="tab-panel active">
+          <div class="url-input-group">
+            <div class="input-wrapper">
+              <input
+                id="urlInput"
+                type="url"
+                inputmode="url"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="Instagram, X, YouTube, TikTok veya başka bir link yapıştırın..."
+              />
+              <button id="btnClearUrl" class="icon-clear hidden" type="button" aria-label="Temizle">✕</button>
+            </div>
+            <div class="url-buttons">
+              <button id="btnPaste" class="btn btn-secondary" type="button">📋 Yapıştır</button>
+              <button id="btnAnalyze" class="btn btn-gradient" type="button">
+                <span id="analyzeBtnText">Analiz Et</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="supported-strip">
+            <span class="plat-badge yt">YouTube & Shorts</span>
+            <span class="plat-badge ig">Instagram Reels/Story</span>
+            <span class="plat-badge x">X / Twitter</span>
+            <span class="plat-badge tt">TikTok (Filigransız)</span>
+            <span class="plat-badge more">+ 1800 Site</span>
+          </div>
+        </div>
+
+        <!-- Batch Multi-URL Panel -->
+        <div id="tabBatch" class="tab-panel hidden">
+          <p class="helper-text">
+            Her satıra bir bağlantı gelecek şekilde YouTube, Instagram, X, TikTok vb. linkleri alt alta yapıştırın:
+          </p>
+          <textarea
+            id="batchUrlsInput"
+            rows="5"
+            placeholder="https://www.instagram.com/reel/...&#10;https://x.com/kullanici/status/...&#10;https://www.youtube.com/watch?v=..."
+          ></textarea>
+
+          <div class="batch-controls">
+            <div class="field-group">
+              <label for="batchModeSelect">Tür</label>
+              <select id="batchModeSelect">
+                <option value="video">🎬 Video (MP4)</option>
+                <option value="audio">🎵 Sadece Ses</option>
+              </select>
+            </div>
+
+            <div class="field-group" id="batchVideoQualityWrap">
+              <label for="batchQualitySelect">Video Kalitesi</label>
+              <select id="batchQualitySelect">
+                <option value="best">En Yüksek Kalite (4K/2K/1080p)</option>
+                <option value="1080" selected>Full HD (1080p)</option>
+                <option value="720">HD (720p)</option>
+                <option value="480">SD (480p)</option>
+              </select>
+            </div>
+
+            <div class="field-group hidden" id="batchAudioFormatWrap">
+              <label for="batchAudioSelect">Ses Formatı</label>
+              <select id="batchAudioSelect">
+                <option value="mp3">MP3 (320 kbps)</option>
+                <option value="m4a">M4A (Apple AAC)</option>
+                <option value="wav">WAV (Kayıpsız)</option>
+              </select>
+            </div>
+
+            <label class="toggle-row batch-compat">
+              <input type="checkbox" id="batchIphoneCompat" checked />
+              <span>📱 iPhone Galeri Uyumlu (H.264/AAC)</span>
+            </label>
+
+            <button id="btnStartBatchUrls" class="btn btn-gradient full-mobile" type="button">
+              🚀 Tümünü İndirme Sırasına Ekle
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Skeleton -->
+      <div id="analyzeLoading" class="glass-card loading-card hidden">
+        <div class="spinner"></div>
+        <div>
+          <h3>Medya analiz ediliyor...</h3>
+          <p>Çözünürlükler, ses akışları ve önizleme bilgileri alınıyor.</p>
+        </div>
+      </div>
+
+      <!-- Playlist Hint Banner (when single YouTube video also belongs to a playlist) -->
+      <div id="playlistHintBanner" class="glass-card banner-card hidden">
+        <div class="banner-text">
+          <span>📂</span>
+          <span>Bu video bir <strong>oynatma listesinin</strong> parçası. Tüm listeyi görmek ister misiniz?</span>
+        </div>
+        <button id="btnLoadFullPlaylist" class="btn btn-secondary btn-sm" type="button">
+          Tüm Listeyi Aç
+        </button>
+      </div>
+
+      <!-- Single Video Preview & Options Card -->
+      <div id="previewCard" class="glass-card preview-card hidden">
+        <div class="preview-header">
+          <div class="thumb-box">
+            <img id="previewThumb" src="" alt="Önizleme" />
+            <span id="previewDuration" class="duration-pill hidden">00:00</span>
+            <span id="previewPlatform" class="platform-tag">YouTube</span>
+          </div>
+          <div class="preview-meta">
+            <h2 id="previewTitle">Video Başlığı</h2>
+            <p id="previewUploader" class="uploader-line"></p>
+            <a id="previewSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="source-link">
+              Kaynağı yeni sekmede aç ↗
+            </a>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Download Type Switch -->
+        <div class="format-section">
+          <div class="segmented-control">
+            <button type="button" class="seg-btn active" data-dlmode="video">🎬 Video İndir (MP4)</button>
+            <button type="button" class="seg-btn" data-dlmode="audio">🎵 Sadece Ses İndir</button>
+          </div>
+
+          <!-- Video Quality Grid -->
+          <div id="videoOptionsBox" class="options-panel">
+            <label class="section-label">Kalite Seçin</label>
+            <div id="qualityGrid" class="quality-grid"></div>
+
+            <label class="toggle-row compat-box">
+              <input type="checkbox" id="chkIphoneCompat" checked />
+              <div>
+                <strong>📱 iPhone 15 & Tüm Cihazlar Uyumlu (H.264 / AAC)</strong>
+                <small>Apple Fotoğraflar galerisine doğrudan kaydedilebilmesi ve Windows'ta sorunsuz ses/görüntü için önerilir.</small>
+              </div>
+            </label>
+          </div>
+
+          <!-- Audio Format Grid -->
+          <div id="audioOptionsBox" class="options-panel hidden">
+            <label class="section-label">Ses Formatı & Kalite</label>
+            <div class="quality-grid audio-grid">
+              <button type="button" class="q-card active" data-afmt="mp3" data-abr="320">
+                <span class="q-badge">ÖNERİLEN</span>
+                <strong>MP3 • 320 kbps</strong>
+                <small>Kapak resimli, her yerde çalar</small>
+              </button>
+              <button type="button" class="q-card" data-afmt="mp3" data-abr="192">
+                <strong>MP3 • 192 kbps</strong>
+                <small>Standart boyut & yüksek kalite</small>
+              </button>
+              <button type="button" class="q-card" data-afmt="m4a" data-abr="256">
+                <span class="q-badge">APPLE</span>
+                <strong>M4A • Orijinal AAC</strong>
+                <small>iPhone Dosyalar & Apple Music uyumlu</small>
+              </button>
+              <button type="button" class="q-card" data-afmt="wav" data-abr="320">
+                <strong>WAV • Kayıpsız</strong>
+                <small>Kurgu programları için sıkıştırmasız</small>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Range Trimmer (Clipper) -->
+        <div class="trim-section">
+          <button id="btnToggleTrim" type="button" class="trim-toggle-btn">
+            <span>✂️ Belirli Zaman Aralığını Keserek İndir (İsteğe Bağlı)</span>
+            <span id="trimChevron">▾</span>
+          </button>
+
+          <div id="trimBody" class="trim-body hidden">
+            <p class="helper-text">
+              Videonun tamamı yerine yalnızca istediğiniz saniye/dakika aralığını indirin (Örn: <code>00:30</code> - <code>01:45</code>):
+            </p>
+            <div class="trim-inputs">
+              <div class="field-group">
+                <label for="trimStart">Başlangıç (dk:sn)</label>
+                <input id="trimStart" type="text" placeholder="00:00" autocomplete="off" />
+              </div>
+              <div class="trim-sep">→</div>
+              <div class="field-group">
+                <label for="trimEnd">Bitiş (dk:sn)</label>
+                <input id="trimEnd" type="text" placeholder="Örn: 01:30" autocomplete="off" />
+              </div>
+              <button id="btnResetTrim" type="button" class="btn btn-ghost btn-sm">Sıfırla</button>
+            </div>
+            <label class="toggle-row">
+              <input type="checkbox" id="chkForceKeyframes" />
+              <span>Hassas kare kesimi (FFmpeg ile milimetrik kesim yapar, birkaç saniye ek süre alır)</span>
+            </label>
+          </div>
+        </div>
+
+        <button id="btnDownloadNow" type="button" class="btn btn-gradient btn-lg">
+          ⬇️ Hemen İndir
+        </button>
+      </div>
+
+      <!-- Playlist / Multi-Item Carousel Card -->
+      <div id="playlistCard" class="glass-card playlist-card hidden">
+        <div class="playlist-top">
+          <div>
+            <span id="playlistPlatformBadge" class="platform-tag inline-tag">Liste</span>
+            <h2 id="playlistTitle">Oynatma Listesi</h2>
+            <p id="playlistSubtitle" class="uploader-line"></p>
+          </div>
+          <div class="playlist-select-btns">
+            <button id="btnSelectAllPl" type="button" class="btn btn-secondary btn-sm">Tümünü Seç</button>
+            <button id="btnDeselectAllPl" type="button" class="btn btn-ghost btn-sm">Temizle</button>
+          </div>
+        </div>
+
+        <div class="playlist-bar">
+          <div class="field-group">
+            <label for="plModeSelect">Tür</label>
+            <select id="plModeSelect">
+              <option value="video">🎬 Video (MP4)</option>
+              <option value="audio">🎵 Sadece Ses</option>
+            </select>
+          </div>
+          <div class="field-group" id="plVideoQualityWrap">
+            <label for="plQualitySelect">Kalite</label>
+            <select id="plQualitySelect">
+              <option value="best">En Yüksek (4K/1080p)</option>
+              <option value="1080" selected>1080p Full HD</option>
+              <option value="720">720p HD</option>
+              <option value="480">480p SD</option>
+            </select>
+          </div>
+          <div class="field-group hidden" id="plAudioFormatWrap">
+            <label for="plAudioSelect">Ses Formatı</label>
+            <select id="plAudioSelect">
+              <option value="mp3">MP3 (320 kbps)</option>
+              <option value="m4a">M4A (AAC)</option>
+            </select>
+          </div>
+          <button id="btnDownloadPlaylist" type="button" class="btn btn-gradient">
+            ⬇️ Seçilenleri İndir (<span id="plSelectedCount">0</span>)
+          </button>
+        </div>
+
+        <div id="playlistEntriesList" class="playlist-list"></div>
+      </div>
+    </section>
+
+    <!-- Right / Secondary Column: Active Queue + Download History -->
+    <aside class="side-col">
+      <!-- Active Downloads Queue -->
+      <div class="glass-card side-card">
+        <div class="card-head">
+          <h3>⚡ Aktif İndirmeler <span id="activeCountBadge" class="count-pill">0</span></h3>
+          <div class="head-btns">
+            <button id="btnOpenDownloadsDir" type="button" class="btn-link hidden" title="Windows İndirilenler klasörünü aç">
+              📂 Klasörü Aç
+            </button>
+            <button id="btnClearQueue" type="button" class="btn-link">Temizle</button>
+          </div>
+        </div>
+        <div id="queueList" class="jobs-list">
+          <div class="empty-state">
+            <p>Henüz aktif bir indirme yok.</p>
+            <small>Bir link analiz edip indirmeyi başlattığınızda hız ve ilerleme çubuğu burada görünür.</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download History -->
+      <div class="glass-card side-card">
+        <div class="card-head">
+          <h3>🕘 İndirme Geçmişi <span id="historyCountBadge" class="count-pill">0</span></h3>
+          <button id="btnClearHistory" type="button" class="btn-link">Geçmişi Sil</button>
+        </div>
+        <div id="historyList" class="jobs-list history-list">
+          <div class="empty-state">
+            <p>İndirme geçmişi boş.</p>
+            <small>İndirdiğiniz tüm videolar ve sesler iPhone veya PC'ye kaydetmeniz için burada listelenir.</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="footer container">
+    <p>
+      Omniİndir yerel ağınızda çalışır, verileriniz üçüncü taraf sunuculara gönderilmez. Lütfen yalnızca telif hakkına ve kullanım iznine sahip olduğunuz içerikleri indirin.
+    </p>
+  </footer>
+
+  <!-- Cookie Settings Modal -->
+  <div id="cookieModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🍪 Giriş Gerektiren İçerikler (Çerez Ayarları)</h3>
+        <button type="button" class="modal-close" data-close="cookieModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="helper-text">
+          Instagram Hikayeler/Reels, yaş kısıtlı X (Twitter) gönderileri veya üyelere özel videolar için oturum çerezi kullanabilirsiniz. Herkese açık YouTube/TikTok videoları için çerez gerekmez.
+        </p>
+
+        <div class="radio-cards">
+          <label class="radio-card">
+            <input type="radio" name="cookieMode" value="none" checked />
+            <div>
+              <strong>Çerez Kullanma (Varsayılan)</strong>
+              <small>Herkese açık YouTube, TikTok, X ve Instagram videoları için yeterlidir.</small>
+            </div>
+          </label>
+
+          <label class="radio-card">
+            <input type="radio" name="cookieMode" value="file" />
+            <div>
+              <strong>📄 cookies.txt Dosyası / Metni (Önerilen — %100 Sorunsuz)</strong>
+              <small>Chrome/Edge şifreleme kilidine takılmadan Instagram ve X oturumunuzu güvenle tanıtır.</small>
+            </div>
+          </label>
+
+          <label id="cookieBrowserRadioCard" class="radio-card">
+            <input type="radio" name="cookieMode" value="browser" />
+            <div>
+              <strong>🌐 PC Tarayıcısından Otomatik Oku</strong>
+              <small>Firefox ile doğrudan çalışır. Chrome/Edge seçerseniz tarayıcıyı tamamen kapatmanız gerekebilir.</small>
+            </div>
+          </label>
+        </div>
+
+        <div id="cookieFileSection" class="sub-box hidden">
+          <div class="cookie-file-status" id="cookieFileBadge">Durum kontrol ediliyor...</div>
+          <div class="upload-row">
+            <label class="btn btn-secondary btn-sm file-label">
+              📁 cookies.txt Dosyası Seç
+              <input type="file" id="cookieFileInput" accept=".txt" hidden />
+            </label>
+            <button id="btnDeleteCookieFile" type="button" class="btn btn-ghost btn-sm">Mevcut Dosyayı Sil</button>
+          </div>
+          <label class="section-label" for="cookieTextArea" style="margin-top:10px;">Veya Netscape Çerez Metnini Yapıştırın:</label>
+          <textarea id="cookieTextArea" rows="4" placeholder="# Netscape HTTP Cookie File&#10;.instagram.com	TRUE	/	TRUE	..."></textarea>
+          <details class="mini-guide">
+            <summary>💡 30 Saniyede cookies.txt Nasıl Alınır?</summary>
+            <ol>
+              <li>Bilgisayar tarayıcınıza <strong>"Get cookies.txt LOCALLY"</strong> eklentisini kurun.</li>
+              <li><code>instagram.com</code> veya <code>x.com</code> sitesine giriş yapıp eklenti simgesine tıklayın ve <strong>Export</strong> deyin.</li>
+              <li>İnen <code>cookies.txt</code> dosyasını yukarıdan seçin ve Kaydet'e basın!</li>
+            </ol>
+          </details>
+        </div>
+
+        <div id="cookieBrowserSection" class="sub-box hidden">
+          <label class="section-label" for="cookieBrowserSelect">Tarayıcı Seçin</label>
+          <select id="cookieBrowserSelect">
+            <option value="firefox">Mozilla Firefox (Önerilen)</option>
+            <option value="chrome">Google Chrome</option>
+            <option value="edge">Microsoft Edge</option>
+            <option value="brave">Brave</option>
+            <option value="opera">Opera</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="cookieModal">Vazgeç</button>
+        <button type="button" id="btnSaveCookies" class="btn btn-gradient">Ayarları Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- iPhone 15 Connection & QR Modal -->
+  <div id="iphoneModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>📱 iPhone 15 + Windows PC Bağlantısı</h3>
+        <button type="button" class="modal-close" data-close="iphoneModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="netTabsBar" class="mode-tabs" style="margin-bottom: 14px;">
+          <button type="button" class="mode-tab active" data-nettab="lan">🏠 Aynı Wi-Fi (Ev Ağı)</button>
+          <button type="button" class="mode-tab" data-nettab="tunnel">🌍 Her Yerden / 5G (HTTPS Tünel)</button>
+        </div>
+
+        <!-- Cloud Direct Box (shown automatically when hosted 24/7 in Cloud) -->
+        <div id="netTabCloud" class="hidden">
+          <p class="helper-text">
+            ☁️ Uygulamanız <strong>7/24 Bulut Sunucuda</strong> çalışıyor! Bilgisayarınız kapalı olsa bile iPhone 15 kameranızla bu QR kodu okutarak her yerden kullanabilirsiniz:
+          </p>
+          <div class="qr-box">
+            <img id="cloudQrImg" src="" alt="7/24 Bulut QR Kod" class="qr-img" />
+            <div class="qr-url-box">
+              <code id="cloudUrlText">https://...</code>
+              <button type="button" id="btnCopyCloudUrl" class="btn btn-secondary btn-sm">Kopyala</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LAN Wi-Fi Tab -->
+        <div id="netTabLan">
+          <p class="helper-text">
+            iPhone 15 ve Windows bilgisayarınız <strong>aynı Wi-Fi</strong> ağındayken kameranızla QR kodu okutun:
+          </p>
+          <div class="qr-box">
+            <img id="lanQrImg" src="" alt="Wi-Fi QR Kod" class="qr-img" />
+            <div class="qr-url-box">
+              <code id="lanUrlText">http://192.168.1.x:8000</code>
+              <button type="button" id="btnCopyLanUrl" class="btn btn-secondary btn-sm">Kopyala</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cloudflare Tunnel Tab -->
+        <div id="netTabTunnel" class="hidden">
+          <p class="helper-text">
+            Ev dışındayken (5G/LTE) erişmek veya Wi-Fi cihaz izolasyonunu aşmak için tek tıkla ücretsiz <strong>HTTPS Tüneli</strong> açın:
+          </p>
+          <div class="tunnel-controls">
+            <button type="button" id="btnStartTunnel" class="btn btn-gradient">⚡ HTTPS Tünelini Başlat</button>
+            <button type="button" id="btnStopTunnel" class="btn btn-ghost hidden">Tüneli Durdur</button>
+          </div>
+          <div id="tunnelResultBox" class="qr-box hidden" style="margin-top:14px;">
+            <img id="tunnelQrImg" src="" alt="HTTPS Tünel QR" class="qr-img" />
+            <div class="qr-url-box">
+              <code id="tunnelUrlText">https://...</code>
+              <button type="button" id="btnCopyTunnelUrl" class="btn btn-secondary btn-sm">Kopyala</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ios-tips">
+          <h4>🍏 iPhone 15 Kullanım İpuçları:</h4>
+          <ul>
+            <li>Safari'de açtıktan sonra alt ortadaki <strong>Paylaş (↑) → Ana Ekrana Ekle</strong> seçeneğine dokunarak tam ekran uygulama gibi kullanabilirsiniz.</li>
+            <li>İndirme bittiğinde <strong>"📲 Fotoğraflara / Paylaş"</strong> butonuna dokunup açılan menüden <strong>"Videoyu Kaydet"</strong> diyerek videoyu doğrudan iPhone <strong>Fotoğraflar (Galeri)</strong> uygulamasına kaydedebilirsiniz!</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Built-in Media Player Modal -->
+  <div id="playerModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card player-modal-card">
+      <div class="modal-header">
+        <h3 id="playerModalTitle">Önizleme Oynatıcı</h3>
+        <button type="button" class="modal-close" id="btnClosePlayer">✕</button>
+      </div>
+      <div class="modal-body player-body">
+        <video id="mediaPlayerVideo" controls playsinline class="hidden"></video>
+        <audio id="mediaPlayerAudio" controls class="hidden"></audio>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password / PIN Lock Modal (Cloud Security) -->
+  <div id="authModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card auth-card">
+      <div class="auth-head">
+        <img src="/icon.svg" alt="Omniİndir" class="brand-logo" />
+        <h3>🔒 Özel Erişim Koruması</h3>
+        <p class="helper-text">7/24 bulut sunucunuza yalnızca sizin erişebilmeniz için belirlediğiniz şifreyi / PIN kodunu girin.</p>
+      </div>
+      <form id="authForm">
+        <input
+          id="authPasswordInput"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Şifre veya PIN kodunuz..."
+          required
+        />
+        <button type="submit" id="btnAuthSubmit" class="btn btn-gradient btn-lg">
+          🔓 Giriş Yap (90 Gün Hatırla)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
