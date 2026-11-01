@@ -187,7 +187,7 @@ def _friendly_error_message(exc: Exception) -> str:
     if _is_cookie_lock_error(exc):
         return (
             "Tarayıcı çerez veritabanı kilitli (Windows üzerinde Chrome/Edge açıkken "
-            "şifrelenir). Lütfen üst menüdeki '🍪 Çerezler' bölümünden cookies.txt yükleyin."
+            "şifrelenir). Lütfen sağ üstteki çerez ayarlarından cookies.txt yükleyin."
         )
     if (
         "not a bot" in lower
@@ -199,8 +199,8 @@ def _friendly_error_message(exc: Exception) -> str:
     ):
         return (
             "Platform doğrulama istedi (Bulut sunucu IP koruması veya giriş gerektiren içerik). "
-            "Sağ üstteki '🍪 Çerezler' butonuna tıklayıp cookies.txt dosyanızı bir kez yükleyerek "
-            "YouTube ve Instagram videolarını sorunsuz indirebilirsiniz."
+            "Sağ üstteki çerez ikonuna tıklayıp cookies.txt dosyanızı bir kez yükleyerek "
+            "sorunsuz indirebilirsiniz."
         )
     if "private video" in lower or "private account" in lower:
         return "Bu video gizli bir hesaba ait. Erişim izniniz olan hesap çerezini ekleyin."
@@ -353,7 +353,7 @@ def _try_social_api_fallback(url: str) -> dict[str, Any] | None:
         if m:
             user, tid = m.group(1), m.group(2)
             try:
-                with httpx.Client(timeout=12.0, headers={"User-Agent": "OmniIndir/1.1"}) as c:
+                with httpx.Client(timeout=12.0, headers={"User-Agent": "Omniloader/1.2"}) as c:
                     r = c.get(f"https://api.fxtwitter.com/{user}/status/{tid}")
                     if r.status_code == 200:
                         tweet = (r.json() or {}).get("tweet") or {}
@@ -684,7 +684,7 @@ class DownloadJob:
         if self.req.start_time or self.req.end_time:
             s = self.req.start_time or "00:00"
             e = self.req.end_time or "Son"
-            clip_suffix = f" ✂️ {s}-{e}"
+            clip_suffix = f" • {s}-{e}"
         if self.req.mode == "audio":
             return f"{self.req.audio_format.upper()} ({self.req.audio_bitrate}k){clip_suffix}"
         q = self.req.quality

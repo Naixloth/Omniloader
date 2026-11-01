@@ -2,63 +2,78 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090d16" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Omniİndir" />
+  <meta name="apple-mobile-web-app-title" content="Omniloader" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-  <link rel="apple-touch-icon" href="/icon.svg" />
-  <title>Omniİndir — Evrensel Video & Ses İndirici</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <title>Omniloader</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="ambient-glow glow-1"></div>
-  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-emerald" aria-hidden="true"></div>
 
   <header class="topbar">
     <div class="container topbar-inner">
       <div class="brand">
-        <img src="/icon.svg" alt="Omniİndir Logo" class="brand-logo" />
-        <div>
-          <h1 class="brand-title">Omniİndir</h1>
-          <p class="brand-subtitle">YouTube • Instagram • X • TikTok • 1800+ Site</p>
-        </div>
+        <img src="/icon.svg" alt="Omniloader" class="brand-logo" />
+        <span class="brand-title">Omniloader</span>
       </div>
 
       <div class="topbar-actions">
-        <button id="btnCookies" class="pill-btn" type="button" title="Giriş gerektiren Instagram/X videoları için çerez ayarları">
-          <span class="dot" id="cookieStatusDot"></span>
-          <span>🍪 Çerezler</span>
+        <button id="btnCookies" class="icon-glass-btn" type="button" aria-label="Çerez Ayarları" title="Çerez Ayarları">
+          <span class="status-dot" id="cookieStatusDot"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/>
+            <path d="M8.5 8.5v.01"/>
+            <path d="M16 15.5v.01"/>
+            <path d="M12 12v.01"/>
+            <path d="M11 17v.01"/>
+            <path d="M7 14v.01"/>
+          </svg>
         </button>
-        <button id="btnIphoneModal" class="pill-btn pill-primary" type="button" title="iPhone 15 ile bağlan">
-          <span>📱 iPhone 15 Bağlantısı</span>
-        </button>
-        <button id="btnLogout" class="pill-btn hidden" type="button" title="Oturumu kilitle">
-          <span>🔒 Kilitle</span>
+
+        <button id="btnLogout" class="icon-glass-btn hidden" type="button" aria-label="Kilitle" title="Kilitle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
         </button>
       </div>
     </div>
   </header>
 
   <main class="container main-grid">
-    <!-- Left / Primary Column -->
+    <!-- Primary Column -->
     <section class="primary-col">
-      <!-- Mode Switcher & URL Card -->
-      <div class="glass-card hero-card">
+      <div class="liquid-card hero-card">
         <div class="mode-tabs" role="tablist">
           <button class="mode-tab active" data-tab="single" type="button">
-            🔗 Tekli Link / Oynatma Listesi
+            <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <span>Tekli / Liste</span>
           </button>
           <button class="mode-tab" data-tab="batch" type="button">
-            📚 Toplu Link İndir
+            <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
+            </svg>
+            <span>Toplu Link</span>
           </button>
         </div>
 
         <!-- Single / Playlist Panel -->
-        <div id="tabSingle" class="tab-panel active">
-          <div class="url-input-group">
+        <div id="tabSingle" class="tab-panel">
+          <div class="url-input-stack">
             <div class="input-wrapper">
               <input
                 id="urlInput"
@@ -68,210 +83,238 @@
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
-                placeholder="Instagram, X, YouTube, TikTok veya başka bir link yapıştırın..."
+                placeholder="Medya bağlantısını yapıştırın..."
               />
-              <button id="btnClearUrl" class="icon-clear hidden" type="button" aria-label="Temizle">✕</button>
+              <button id="btnClearUrl" class="icon-clear hidden" type="button" aria-label="Temizle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
             </div>
+
             <div class="url-buttons">
-              <button id="btnPaste" class="btn btn-secondary" type="button">📋 Yapıştır</button>
-              <button id="btnAnalyze" class="btn btn-gradient" type="button">
+              <button id="btnPaste" class="btn btn-glass" type="button">
+                <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                </svg>
+                <span>Yapıştır</span>
+              </button>
+              <button id="btnAnalyze" class="btn btn-emerald" type="button">
+                <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                </svg>
                 <span id="analyzeBtnText">Analiz Et</span>
               </button>
             </div>
-          </div>
-
-          <div class="supported-strip">
-            <span class="plat-badge yt">YouTube & Shorts</span>
-            <span class="plat-badge ig">Instagram Reels/Story</span>
-            <span class="plat-badge x">X / Twitter</span>
-            <span class="plat-badge tt">TikTok (Filigransız)</span>
-            <span class="plat-badge more">+ 1800 Site</span>
           </div>
         </div>
 
         <!-- Batch Multi-URL Panel -->
         <div id="tabBatch" class="tab-panel hidden">
-          <p class="helper-text">
-            Her satıra bir bağlantı gelecek şekilde YouTube, Instagram, X, TikTok vb. linkleri alt alta yapıştırın:
-          </p>
+          <p class="helper-text">Her satıra bir bağlantı gelecek şekilde alt alta yapıştırın:</p>
           <textarea
             id="batchUrlsInput"
-            rows="5"
-            placeholder="https://www.instagram.com/reel/...&#10;https://x.com/kullanici/status/...&#10;https://www.youtube.com/watch?v=..."
+            rows="4"
+            placeholder="https://...&#10;https://..."
           ></textarea>
 
           <div class="batch-controls">
             <div class="field-group">
               <label for="batchModeSelect">Tür</label>
               <select id="batchModeSelect">
-                <option value="video">🎬 Video (MP4)</option>
-                <option value="audio">🎵 Sadece Ses</option>
+                <option value="video">Video (MP4)</option>
+                <option value="audio">Sadece Ses</option>
               </select>
             </div>
 
             <div class="field-group" id="batchVideoQualityWrap">
-              <label for="batchQualitySelect">Video Kalitesi</label>
+              <label for="batchQualitySelect">Kalite</label>
               <select id="batchQualitySelect">
-                <option value="best">En Yüksek Kalite (4K/2K/1080p)</option>
-                <option value="1080" selected>Full HD (1080p)</option>
-                <option value="720">HD (720p)</option>
-                <option value="480">SD (480p)</option>
+                <option value="best">En Yüksek</option>
+                <option value="1080" selected>1080p Full HD</option>
+                <option value="720">720p HD</option>
+                <option value="480">480p SD</option>
               </select>
             </div>
 
             <div class="field-group hidden" id="batchAudioFormatWrap">
-              <label for="batchAudioSelect">Ses Formatı</label>
+              <label for="batchAudioSelect">Format</label>
               <select id="batchAudioSelect">
-                <option value="mp3">MP3 (320 kbps)</option>
-                <option value="m4a">M4A (Apple AAC)</option>
-                <option value="wav">WAV (Kayıpsız)</option>
+                <option value="mp3">MP3 (320k)</option>
+                <option value="m4a">M4A (AAC)</option>
+                <option value="wav">WAV</option>
               </select>
             </div>
 
             <label class="toggle-row batch-compat">
               <input type="checkbox" id="batchIphoneCompat" checked />
-              <span>📱 iPhone Galeri Uyumlu (H.264/AAC)</span>
+              <span>Apple &amp; Galeri uyumlu kodlama (H.264 / AAC)</span>
             </label>
 
-            <button id="btnStartBatchUrls" class="btn btn-gradient full-mobile" type="button">
-              🚀 Tümünü İndirme Sırasına Ekle
+            <button id="btnStartBatchUrls" class="btn btn-emerald btn-block" type="button">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" x2="12" y1="15" y2="3"/>
+              </svg>
+              <span>Tümünü Sıraya Ekle</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Loading Skeleton -->
-      <div id="analyzeLoading" class="glass-card loading-card hidden">
+      <!-- Loading Card -->
+      <div id="analyzeLoading" class="liquid-card loading-card hidden">
         <div class="spinner"></div>
-        <div>
-          <h3>Medya analiz ediliyor...</h3>
-          <p>Çözünürlükler, ses akışları ve önizleme bilgileri alınıyor.</p>
+        <div class="loading-meta">
+          <h3>Bağlantı çözümleniyor</h3>
+          <p>Akış ve kalite seçenekleri hazırlanıyor...</p>
         </div>
       </div>
 
-      <!-- Playlist Hint Banner (when single YouTube video also belongs to a playlist) -->
-      <div id="playlistHintBanner" class="glass-card banner-card hidden">
+      <!-- Playlist Hint Banner -->
+      <div id="playlistHintBanner" class="liquid-card banner-card hidden">
         <div class="banner-text">
-          <span>📂</span>
-          <span>Bu video bir <strong>oynatma listesinin</strong> parçası. Tüm listeyi görmek ister misiniz?</span>
+          <svg class="ui-icon emerald-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/>
+            <line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>
+          </svg>
+          <span>Bu bağlantı bir oynatma listesine ait.</span>
         </div>
-        <button id="btnLoadFullPlaylist" class="btn btn-secondary btn-sm" type="button">
-          Tüm Listeyi Aç
-        </button>
+        <button id="btnLoadFullPlaylist" class="btn btn-glass btn-sm" type="button">Listeyi Aç</button>
       </div>
 
-      <!-- Single Video Preview & Options Card -->
-      <div id="previewCard" class="glass-card preview-card hidden">
+      <!-- Single Video Preview Card -->
+      <div id="previewCard" class="liquid-card preview-card hidden">
         <div class="preview-header">
           <div class="thumb-box">
             <img id="previewThumb" src="" alt="Önizleme" />
             <span id="previewDuration" class="duration-pill hidden">00:00</span>
-            <span id="previewPlatform" class="platform-tag">YouTube</span>
+            <span id="previewPlatform" class="platform-tag">Medya</span>
           </div>
           <div class="preview-meta">
-            <h2 id="previewTitle">Video Başlığı</h2>
+            <h2 id="previewTitle">Başlık</h2>
             <p id="previewUploader" class="uploader-line"></p>
             <a id="previewSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="source-link">
-              Kaynağı yeni sekmede aç ↗
+              Kaynağı görüntüle ↗
             </a>
           </div>
         </div>
 
         <hr class="divider" />
 
-        <!-- Download Type Switch -->
         <div class="format-section">
           <div class="segmented-control">
-            <button type="button" class="seg-btn active" data-dlmode="video">🎬 Video İndir (MP4)</button>
-            <button type="button" class="seg-btn" data-dlmode="audio">🎵 Sadece Ses İndir</button>
+            <button type="button" class="seg-btn active" data-dlmode="video">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="18" x="3" y="3" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/>
+              </svg>
+              <span>Video (MP4)</span>
+            </button>
+            <button type="button" class="seg-btn" data-dlmode="audio">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+              </svg>
+              <span>Ses</span>
+            </button>
           </div>
 
           <!-- Video Quality Grid -->
           <div id="videoOptionsBox" class="options-panel">
-            <label class="section-label">Kalite Seçin</label>
+            <label class="section-label">Çözünürlük</label>
             <div id="qualityGrid" class="quality-grid"></div>
 
             <label class="toggle-row compat-box">
               <input type="checkbox" id="chkIphoneCompat" checked />
               <div>
-                <strong>📱 iPhone 15 & Tüm Cihazlar Uyumlu (H.264 / AAC)</strong>
-                <small>Apple Fotoğraflar galerisine doğrudan kaydedilebilmesi ve Windows'ta sorunsuz ses/görüntü için önerilir.</small>
+                <strong>Galeri Uyumlu Kodlama (H.264 / AAC)</strong>
+                <small>iOS Fotoğraflar ve tüm cihazlarda doğrudan oynatma sağlar.</small>
               </div>
             </label>
           </div>
 
           <!-- Audio Format Grid -->
           <div id="audioOptionsBox" class="options-panel hidden">
-            <label class="section-label">Ses Formatı & Kalite</label>
+            <label class="section-label">Ses Formatı</label>
             <div class="quality-grid audio-grid">
               <button type="button" class="q-card active" data-afmt="mp3" data-abr="320">
-                <span class="q-badge">ÖNERİLEN</span>
-                <strong>MP3 • 320 kbps</strong>
-                <small>Kapak resimli, her yerde çalar</small>
+                <span class="q-badge">320K</span>
+                <strong>MP3 Yüksek</strong>
+                <small>Kapak resimli</small>
               </button>
               <button type="button" class="q-card" data-afmt="mp3" data-abr="192">
-                <strong>MP3 • 192 kbps</strong>
-                <small>Standart boyut & yüksek kalite</small>
+                <strong>MP3 Standart</strong>
+                <small>192 kbps</small>
               </button>
               <button type="button" class="q-card" data-afmt="m4a" data-abr="256">
-                <span class="q-badge">APPLE</span>
-                <strong>M4A • Orijinal AAC</strong>
-                <small>iPhone Dosyalar & Apple Music uyumlu</small>
+                <span class="q-badge">AAC</span>
+                <strong>M4A Orijinal</strong>
+                <small>Apple uyumlu</small>
               </button>
               <button type="button" class="q-card" data-afmt="wav" data-abr="320">
-                <strong>WAV • Kayıpsız</strong>
-                <small>Kurgu programları için sıkıştırmasız</small>
+                <strong>WAV</strong>
+                <small>Kayıpsız</small>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Time Range Trimmer (Clipper) -->
+        <!-- Time Range Clipper -->
         <div class="trim-section">
           <button id="btnToggleTrim" type="button" class="trim-toggle-btn">
-            <span>✂️ Belirli Zaman Aralığını Keserek İndir (İsteğe Bağlı)</span>
-            <span id="trimChevron">▾</span>
+            <span class="trim-label-wrap">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/>
+                <circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>
+              </svg>
+              <span>Zaman Aralığı Kes</span>
+            </span>
+            <svg id="trimChevron" class="ui-icon chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
           </button>
 
           <div id="trimBody" class="trim-body hidden">
-            <p class="helper-text">
-              Videonun tamamı yerine yalnızca istediğiniz saniye/dakika aralığını indirin (Örn: <code>00:30</code> - <code>01:45</code>):
-            </p>
             <div class="trim-inputs">
               <div class="field-group">
-                <label for="trimStart">Başlangıç (dk:sn)</label>
+                <label for="trimStart">Başlangıç</label>
                 <input id="trimStart" type="text" placeholder="00:00" autocomplete="off" />
               </div>
-              <div class="trim-sep">→</div>
               <div class="field-group">
-                <label for="trimEnd">Bitiş (dk:sn)</label>
-                <input id="trimEnd" type="text" placeholder="Örn: 01:30" autocomplete="off" />
+                <label for="trimEnd">Bitiş</label>
+                <input id="trimEnd" type="text" placeholder="01:30" autocomplete="off" />
               </div>
-              <button id="btnResetTrim" type="button" class="btn btn-ghost btn-sm">Sıfırla</button>
+              <button id="btnResetTrim" type="button" class="btn btn-glass btn-sm">Sıfırla</button>
             </div>
             <label class="toggle-row">
               <input type="checkbox" id="chkForceKeyframes" />
-              <span>Hassas kare kesimi (FFmpeg ile milimetrik kesim yapar, birkaç saniye ek süre alır)</span>
+              <span>Hassas kare kesimi</span>
             </label>
           </div>
         </div>
 
-        <button id="btnDownloadNow" type="button" class="btn btn-gradient btn-lg">
-          ⬇️ Hemen İndir
+        <button id="btnDownloadNow" type="button" class="btn btn-emerald btn-lg">
+          <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          <span>İndir</span>
         </button>
       </div>
 
-      <!-- Playlist / Multi-Item Carousel Card -->
-      <div id="playlistCard" class="glass-card playlist-card hidden">
+      <!-- Playlist Card -->
+      <div id="playlistCard" class="liquid-card playlist-card hidden">
         <div class="playlist-top">
-          <div>
+          <div class="playlist-meta-wrap">
             <span id="playlistPlatformBadge" class="platform-tag inline-tag">Liste</span>
             <h2 id="playlistTitle">Oynatma Listesi</h2>
             <p id="playlistSubtitle" class="uploader-line"></p>
           </div>
           <div class="playlist-select-btns">
-            <button id="btnSelectAllPl" type="button" class="btn btn-secondary btn-sm">Tümünü Seç</button>
-            <button id="btnDeselectAllPl" type="button" class="btn btn-ghost btn-sm">Temizle</button>
+            <button id="btnSelectAllPl" type="button" class="btn btn-glass btn-sm">Tümü</button>
+            <button id="btnDeselectAllPl" type="button" class="btn btn-glass btn-sm">Temizle</button>
           </div>
         </div>
 
@@ -279,28 +322,33 @@
           <div class="field-group">
             <label for="plModeSelect">Tür</label>
             <select id="plModeSelect">
-              <option value="video">🎬 Video (MP4)</option>
-              <option value="audio">🎵 Sadece Ses</option>
+              <option value="video">Video (MP4)</option>
+              <option value="audio">Ses</option>
             </select>
           </div>
           <div class="field-group" id="plVideoQualityWrap">
             <label for="plQualitySelect">Kalite</label>
             <select id="plQualitySelect">
-              <option value="best">En Yüksek (4K/1080p)</option>
-              <option value="1080" selected>1080p Full HD</option>
-              <option value="720">720p HD</option>
-              <option value="480">480p SD</option>
+              <option value="best">En Yüksek</option>
+              <option value="1080" selected>1080p</option>
+              <option value="720">720p</option>
+              <option value="480">480p</option>
             </select>
           </div>
           <div class="field-group hidden" id="plAudioFormatWrap">
-            <label for="plAudioSelect">Ses Formatı</label>
+            <label for="plAudioSelect">Format</label>
             <select id="plAudioSelect">
-              <option value="mp3">MP3 (320 kbps)</option>
+              <option value="mp3">MP3 (320k)</option>
               <option value="m4a">M4A (AAC)</option>
             </select>
           </div>
-          <button id="btnDownloadPlaylist" type="button" class="btn btn-gradient">
-            ⬇️ Seçilenleri İndir (<span id="plSelectedCount">0</span>)
+          <button id="btnDownloadPlaylist" type="button" class="btn btn-emerald btn-block-mobile">
+            <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" x2="12" y1="15" y2="3"/>
+            </svg>
+            <span>Seçilenleri İndir (<span id="plSelectedCount">0</span>)</span>
           </button>
         </div>
 
@@ -308,83 +356,87 @@
       </div>
     </section>
 
-    <!-- Right / Secondary Column: Active Queue + Download History -->
+    <!-- Secondary Column: Active Queue + History -->
     <aside class="side-col">
-      <!-- Active Downloads Queue -->
-      <div class="glass-card side-card">
+      <div class="liquid-card side-card">
         <div class="card-head">
-          <h3>⚡ Aktif İndirmeler <span id="activeCountBadge" class="count-pill">0</span></h3>
+          <h3>
+            <svg class="ui-icon emerald-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
+            </svg>
+            <span>Aktif İndirmeler</span>
+            <span id="activeCountBadge" class="count-pill">0</span>
+          </h3>
           <div class="head-btns">
-            <button id="btnOpenDownloadsDir" type="button" class="btn-link hidden" title="Windows İndirilenler klasörünü aç">
-              📂 Klasörü Aç
-            </button>
+            <button id="btnOpenDownloadsDir" type="button" class="btn-link hidden" title="Klasörü Aç">Klasör</button>
             <button id="btnClearQueue" type="button" class="btn-link">Temizle</button>
           </div>
         </div>
         <div id="queueList" class="jobs-list">
           <div class="empty-state">
-            <p>Henüz aktif bir indirme yok.</p>
-            <small>Bir link analiz edip indirmeyi başlattığınızda hız ve ilerleme çubuğu burada görünür.</small>
+            <p>Aktif indirme bulunmuyor</p>
           </div>
         </div>
       </div>
 
-      <!-- Download History -->
-      <div class="glass-card side-card">
+      <div class="liquid-card side-card">
         <div class="card-head">
-          <h3>🕘 İndirme Geçmişi <span id="historyCountBadge" class="count-pill">0</span></h3>
-          <button id="btnClearHistory" type="button" class="btn-link">Geçmişi Sil</button>
+          <h3>
+            <svg class="ui-icon emerald-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Geçmiş</span>
+            <span id="historyCountBadge" class="count-pill">0</span>
+          </h3>
+          <button id="btnClearHistory" type="button" class="btn-link">Temizle</button>
         </div>
         <div id="historyList" class="jobs-list history-list">
           <div class="empty-state">
-            <p>İndirme geçmişi boş.</p>
-            <small>İndirdiğiniz tüm videolar ve sesler iPhone veya PC'ye kaydetmeniz için burada listelenir.</small>
+            <p>Henüz indirilen medya yok</p>
           </div>
         </div>
       </div>
     </aside>
   </main>
 
-  <footer class="footer container">
-    <p>
-      Omniİndir yerel ağınızda çalışır, verileriniz üçüncü taraf sunuculara gönderilmez. Lütfen yalnızca telif hakkına ve kullanım iznine sahip olduğunuz içerikleri indirin.
-    </p>
-  </footer>
-
   <!-- Cookie Settings Modal -->
   <div id="cookieModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>🍪 Giriş Gerektiren İçerikler (Çerez Ayarları)</h3>
-        <button type="button" class="modal-close" data-close="cookieModal">✕</button>
+        <h3>Çerez Ayarları</h3>
+        <button type="button" class="modal-close" data-close="cookieModal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
         <p class="helper-text">
-          Instagram Hikayeler/Reels, yaş kısıtlı X (Twitter) gönderileri veya üyelere özel videolar için oturum çerezi kullanabilirsiniz. Herkese açık YouTube/TikTok videoları için çerez gerekmez.
+          Giriş veya bot doğrulaması isteyen içerikler için oturum çerezi tanımlayabilirsiniz.
         </p>
 
         <div class="radio-cards">
           <label class="radio-card">
             <input type="radio" name="cookieMode" value="none" checked />
             <div>
-              <strong>Çerez Kullanma (Varsayılan)</strong>
-              <small>Herkese açık YouTube, TikTok, X ve Instagram videoları için yeterlidir.</small>
+              <strong>Kapalı</strong>
+              <small>Standart çerezsiz erişim.</small>
             </div>
           </label>
 
           <label class="radio-card">
             <input type="radio" name="cookieMode" value="file" />
             <div>
-              <strong>📄 cookies.txt Dosyası / Metni (Önerilen — %100 Sorunsuz)</strong>
-              <small>Chrome/Edge şifreleme kilidine takılmadan Instagram ve X oturumunuzu güvenle tanıtır.</small>
+              <strong>cookies.txt Dosyası / Metni</strong>
+              <small>Tüm platformlarda kesintisiz çalışır.</small>
             </div>
           </label>
 
           <label id="cookieBrowserRadioCard" class="radio-card">
             <input type="radio" name="cookieMode" value="browser" />
             <div>
-              <strong>🌐 PC Tarayıcısından Otomatik Oku</strong>
-              <small>Firefox ile doğrudan çalışır. Chrome/Edge seçerseniz tarayıcıyı tamamen kapatmanız gerekebilir.</small>
+              <strong>Tarayıcıdan Oku (Yerel PC)</strong>
+              <small>Firefox ile doğrudan okur.</small>
             </div>
           </label>
         </div>
@@ -392,111 +444,33 @@
         <div id="cookieFileSection" class="sub-box hidden">
           <div class="cookie-file-status" id="cookieFileBadge">Durum kontrol ediliyor...</div>
           <div class="upload-row">
-            <label class="btn btn-secondary btn-sm file-label">
-              📁 cookies.txt Dosyası Seç
+            <label class="btn btn-glass btn-sm file-label">
+              <span>cookies.txt Seç</span>
               <input type="file" id="cookieFileInput" accept=".txt" hidden />
             </label>
-            <button id="btnCopyCookieB64" type="button" class="btn btn-secondary btn-sm hidden" title="Render Environment Variables içine COOKIES_BASE64 olarak eklemek için kopyalar">
-              📌 Render Kalıcı Kodu Kopyala
+            <button id="btnCopyCookieB64" type="button" class="btn btn-glass btn-sm hidden">
+              Kalıcı Kodu Kopyala
             </button>
-            <button id="btnDeleteCookieFile" type="button" class="btn btn-ghost btn-sm">Mevcut Dosyayı Sil</button>
+            <button id="btnDeleteCookieFile" type="button" class="btn btn-glass btn-sm">Sil</button>
           </div>
-          <label class="section-label" for="cookieTextArea" style="margin-top:10px;">Veya Netscape Çerez Metnini Yapıştırın:</label>
-          <textarea id="cookieTextArea" rows="4" placeholder="# Netscape HTTP Cookie File&#10;.instagram.com	TRUE	/	TRUE	..."></textarea>
-          <details class="mini-guide">
-            <summary>💡 30 Saniyede cookies.txt Nasıl Alınır?</summary>
-            <ol>
-              <li>Bilgisayar tarayıcınıza <strong>"Get cookies.txt LOCALLY"</strong> eklentisini kurun.</li>
-              <li><code>instagram.com</code> veya <code>x.com</code> sitesine giriş yapıp eklenti simgesine tıklayın ve <strong>Export</strong> deyin.</li>
-              <li>İnen <code>cookies.txt</code> dosyasını yukarıdan seçin ve Kaydet'e basın!</li>
-            </ol>
-          </details>
+          <label class="section-label" for="cookieTextArea" style="margin-top:12px;">Veya Netscape çerez metnini yapıştırın</label>
+          <textarea id="cookieTextArea" rows="3" placeholder="# Netscape HTTP Cookie File"></textarea>
         </div>
 
         <div id="cookieBrowserSection" class="sub-box hidden">
-          <label class="section-label" for="cookieBrowserSelect">Tarayıcı Seçin</label>
+          <label class="section-label" for="cookieBrowserSelect">Tarayıcı</label>
           <select id="cookieBrowserSelect">
-            <option value="firefox">Mozilla Firefox (Önerilen)</option>
-            <option value="chrome">Google Chrome</option>
-            <option value="edge">Microsoft Edge</option>
+            <option value="firefox">Firefox</option>
+            <option value="chrome">Chrome</option>
+            <option value="edge">Edge</option>
             <option value="brave">Brave</option>
             <option value="opera">Opera</option>
           </select>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-close="cookieModal">Vazgeç</button>
-        <button type="button" id="btnSaveCookies" class="btn btn-gradient">Ayarları Kaydet</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- iPhone 15 Connection & QR Modal -->
-  <div id="iphoneModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>📱 iPhone 15 + Windows PC Bağlantısı</h3>
-        <button type="button" class="modal-close" data-close="iphoneModal">✕</button>
-      </div>
-      <div class="modal-body">
-        <div id="netTabsBar" class="mode-tabs" style="margin-bottom: 14px;">
-          <button type="button" class="mode-tab active" data-nettab="lan">🏠 Aynı Wi-Fi (Ev Ağı)</button>
-          <button type="button" class="mode-tab" data-nettab="tunnel">🌍 Her Yerden / 5G (HTTPS Tünel)</button>
-        </div>
-
-        <!-- Cloud Direct Box (shown automatically when hosted 24/7 in Cloud) -->
-        <div id="netTabCloud" class="hidden">
-          <p class="helper-text">
-            ☁️ Uygulamanız <strong>7/24 Bulut Sunucuda</strong> çalışıyor! Bilgisayarınız kapalı olsa bile iPhone 15 kameranızla bu QR kodu okutarak her yerden kullanabilirsiniz:
-          </p>
-          <div class="qr-box">
-            <img id="cloudQrImg" src="" alt="7/24 Bulut QR Kod" class="qr-img" />
-            <div class="qr-url-box">
-              <code id="cloudUrlText">https://...</code>
-              <button type="button" id="btnCopyCloudUrl" class="btn btn-secondary btn-sm">Kopyala</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- LAN Wi-Fi Tab -->
-        <div id="netTabLan">
-          <p class="helper-text">
-            iPhone 15 ve Windows bilgisayarınız <strong>aynı Wi-Fi</strong> ağındayken kameranızla QR kodu okutun:
-          </p>
-          <div class="qr-box">
-            <img id="lanQrImg" src="" alt="Wi-Fi QR Kod" class="qr-img" />
-            <div class="qr-url-box">
-              <code id="lanUrlText">http://192.168.1.x:8000</code>
-              <button type="button" id="btnCopyLanUrl" class="btn btn-secondary btn-sm">Kopyala</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Cloudflare Tunnel Tab -->
-        <div id="netTabTunnel" class="hidden">
-          <p class="helper-text">
-            Ev dışındayken (5G/LTE) erişmek veya Wi-Fi cihaz izolasyonunu aşmak için tek tıkla ücretsiz <strong>HTTPS Tüneli</strong> açın:
-          </p>
-          <div class="tunnel-controls">
-            <button type="button" id="btnStartTunnel" class="btn btn-gradient">⚡ HTTPS Tünelini Başlat</button>
-            <button type="button" id="btnStopTunnel" class="btn btn-ghost hidden">Tüneli Durdur</button>
-          </div>
-          <div id="tunnelResultBox" class="qr-box hidden" style="margin-top:14px;">
-            <img id="tunnelQrImg" src="" alt="HTTPS Tünel QR" class="qr-img" />
-            <div class="qr-url-box">
-              <code id="tunnelUrlText">https://...</code>
-              <button type="button" id="btnCopyTunnelUrl" class="btn btn-secondary btn-sm">Kopyala</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="ios-tips">
-          <h4>🍏 iPhone 15 Kullanım İpuçları:</h4>
-          <ul>
-            <li>Safari'de açtıktan sonra alt ortadaki <strong>Paylaş (↑) → Ana Ekrana Ekle</strong> seçeneğine dokunarak tam ekran uygulama gibi kullanabilirsiniz.</li>
-            <li>İndirme bittiğinde <strong>"📲 Fotoğraflara / Paylaş"</strong> butonuna dokunup açılan menüden <strong>"Videoyu Kaydet"</strong> diyerek videoyu doğrudan iPhone <strong>Fotoğraflar (Galeri)</strong> uygulamasına kaydedebilirsiniz!</li>
-          </ul>
-        </div>
+        <button type="button" class="btn btn-glass" data-close="cookieModal">İptal</button>
+        <button type="button" id="btnSaveCookies" class="btn btn-emerald">Kaydet</button>
       </div>
     </div>
   </div>
@@ -505,8 +479,12 @@
   <div id="playerModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card player-modal-card">
       <div class="modal-header">
-        <h3 id="playerModalTitle">Önizleme Oynatıcı</h3>
-        <button type="button" class="modal-close" id="btnClosePlayer">✕</button>
+        <h3 id="playerModalTitle">Oynatıcı</h3>
+        <button type="button" class="modal-close" id="btnClosePlayer" aria-label="Kapat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
       </div>
       <div class="modal-body player-body">
         <video id="mediaPlayerVideo" controls playsinline class="hidden"></video>
@@ -515,30 +493,29 @@
     </div>
   </div>
 
-  <!-- Password / PIN Lock Modal (Cloud Security) -->
+  <!-- Password / PIN Lock Modal -->
   <div id="authModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card auth-card">
       <div class="auth-head">
-        <img src="/icon.svg" alt="Omniİndir" class="brand-logo" />
-        <h3>🔒 Özel Erişim Koruması</h3>
-        <p class="helper-text">7/24 bulut sunucunuza yalnızca sizin erişebilmeniz için belirlediğiniz şifreyi / PIN kodunu girin.</p>
+        <img src="/icon.svg" alt="Omniloader" class="brand-logo" />
+        <h3>Omniloader</h3>
+        <p class="helper-text">Devam etmek için erişim şifrenizi girin.</p>
       </div>
       <form id="authForm">
         <input
           id="authPasswordInput"
           type="password"
           autocomplete="current-password"
-          placeholder="Şifre veya PIN kodunuz..."
+          placeholder="Şifre / PIN"
           required
         />
-        <button type="submit" id="btnAuthSubmit" class="btn btn-gradient btn-lg">
-          🔓 Giriş Yap (90 Gün Hatırla)
+        <button type="submit" id="btnAuthSubmit" class="btn btn-emerald btn-lg">
+          Giriş Yap
         </button>
       </form>
     </div>
   </div>
 
-  <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="/app.js"></script>

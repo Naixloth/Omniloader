@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: omni-indir
+    name: omniloader
     runtime: docker
     plan: free
     envVars:

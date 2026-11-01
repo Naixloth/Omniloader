@@ -126,8 +126,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Omniİndir — Evrensel Medya İndirici",
-    version="1.1.0",
+    title="Omniloader",
+    version="1.2.0",
     lifespan=lifespan,
 )
 

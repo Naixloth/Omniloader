@@ -1,18 +1,28 @@
 {
-  "name": "Omniİndir — Video & Ses İndirici",
-  "short_name": "Omniİndir",
-  "description": "YouTube, Instagram, X, TikTok ve 1800+ siteden yüksek kaliteli video ve ses indirici.",
+  "name": "Omniloader",
+  "short_name": "Omniloader",
+  "description": "Minimalist medya indirici.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#090d16",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/svg+xml"
     }
   ]
 }

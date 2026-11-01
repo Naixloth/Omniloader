@@ -1,9 +1,19 @@
 (() => {
   "use strict";
 
+  const ICONS = {
+    share: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>`,
+    download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`,
+    play: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
+    folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>`,
+    trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
+    close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+  };
+
   const state = {
     system: null,
-    isIOS: /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    isIOS:
+      /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
     analyzed: null,
     dlMode: "video",
@@ -69,9 +79,10 @@
 
   async function api(path, options = {}) {
     const res = await fetch(path, {
-      headers: options.body && !(options.body instanceof FormData)
-        ? { "Content-Type": "application/json" }
-        : undefined,
+      headers:
+        options.body && !(options.body instanceof FormData)
+          ? { "Content-Type": "application/json" }
+          : undefined,
       ...options,
     });
     const data = await res.json().catch(() => ({}));
@@ -84,18 +95,14 @@
     return data;
   }
 
-  // --- System & Header Initialization ---
   async function loadSystemInfo() {
     try {
       const sys = await api("/api/system");
       state.system = sys;
-
       $("btnOpenDownloadsDir").classList.toggle("hidden", !sys.is_local_pc);
       $("btnLogout").classList.toggle("hidden", !sys.auth_enabled);
       $("cookieBrowserRadioCard").classList.toggle("hidden", Boolean(sys.cloud_mode));
-
       updateCookieUI(sys.settings);
-      updateNetworkModalUI(sys);
     } catch (err) {
       console.error("Sistem bilgisi alınamadı:", err);
     }
@@ -107,8 +114,7 @@
     const active = settings.cookie_mode && settings.cookie_mode !== "none";
     dot.classList.toggle("active", Boolean(active));
 
-    const radios = document.querySelectorAll('input[name="cookieMode"]');
-    radios.forEach((r) => {
+    document.querySelectorAll('input[name="cookieMode"]').forEach((r) => {
       r.checked = r.value === (settings.cookie_mode || "none");
     });
 
@@ -118,83 +124,37 @@
 
     const badge = $("cookieFileBadge");
     if (settings.has_cookie_file) {
-      badge.textContent = "✅ Kayıtlı cookies.txt dosyası mevcut ve kullanıma hazır.";
-      badge.style.color = "#34d399";
-      $("btnCopyCookieB64").classList.toggle("hidden", !Boolean(state.system && state.system.cloud_mode));
+      badge.textContent = "cookies.txt tanımlı ve aktif";
+      badge.style.color = "#4ade80";
+      $("btnCopyCookieB64").classList.toggle(
+        "hidden",
+        !Boolean(state.system && state.system.cloud_mode)
+      );
     } else {
-      badge.textContent = "ℹ️ Henüz yüklenmiş bir cookies.txt dosyası yok.";
-      badge.style.color = "#94a3b8";
+      badge.textContent = "Yüklü çerez dosyası yok";
+      badge.style.color = "rgba(255,255,255,0.5)";
       $("btnCopyCookieB64").classList.add("hidden");
     }
     syncCookieSections();
   }
 
   function syncCookieSections() {
-    const selected = document.querySelector('input[name="cookieMode"]:checked')?.value || "none";
+    const selected =
+      document.querySelector('input[name="cookieMode"]:checked')?.value || "none";
     $("cookieFileSection").classList.toggle("hidden", selected !== "file");
     $("cookieBrowserSection").classList.toggle("hidden", selected !== "browser");
   }
 
-  function updateNetworkModalUI(sys) {
-    if (!sys) return;
-    if (sys.cloud_mode) {
-      const cloudUrl = window.location.origin;
-      $("netTabsBar").classList.add("hidden");
-      $("netTabLan").classList.add("hidden");
-      $("netTabTunnel").classList.add("hidden");
-      $("netTabCloud").classList.remove("hidden");
-      $("cloudUrlText").textContent = cloudUrl;
-      $("cloudQrImg").src = `/api/qr?text=${encodeURIComponent(cloudUrl)}`;
-      return;
-    }
-
-    const lanUrl = sys.primary_lan_url;
-    $("lanUrlText").textContent = lanUrl;
-    $("lanQrImg").src = `/api/qr?text=${encodeURIComponent(lanUrl)}`;
-
-    renderTunnelState(sys.tunnel);
-  }
-
-  function renderTunnelState(tunnel) {
-    if (!tunnel) return;
-    const startBtn = $("btnStartTunnel");
-    const stopBtn = $("btnStopTunnel");
-    const resBox = $("tunnelResultBox");
-
-    if (tunnel.status === "running" && tunnel.public_url) {
-      startBtn.classList.add("hidden");
-      stopBtn.classList.remove("hidden");
-      resBox.classList.remove("hidden");
-      $("tunnelUrlText").textContent = tunnel.public_url;
-      $("tunnelQrImg").src = `/api/qr?text=${encodeURIComponent(tunnel.public_url)}`;
-    } else {
-      startBtn.classList.remove("hidden");
-      startBtn.disabled = false;
-      startBtn.textContent = "⚡ HTTPS Tünelini Başlat";
-      stopBtn.classList.add("hidden");
-      resBox.classList.add("hidden");
-    }
-  }
-
-  // --- Tabs & Inputs ---
   function initTabs() {
     document.querySelectorAll(".mode-tab[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".mode-tab[data-tab]").forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".mode-tab[data-tab]")
+          .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         const tab = btn.dataset.tab;
         $("tabSingle").classList.toggle("hidden", tab !== "single");
         $("tabBatch").classList.toggle("hidden", tab !== "batch");
-      });
-    });
-
-    document.querySelectorAll(".mode-tab[data-nettab]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".mode-tab[data-nettab]").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        const t = btn.dataset.nettab;
-        $("netTabLan").classList.toggle("hidden", t !== "lan");
-        $("netTabTunnel").classList.toggle("hidden", t !== "tunnel");
       });
     });
 
@@ -234,15 +194,15 @@
             runAnalyze(false);
             return;
           }
-          toast("Panoda metin bulunamadı.", "error");
+          toast("Panoda bağlantı bulunamadı.", "error");
         } catch {
           urlInput.focus();
-          toast("Kutucuğa dokunup 'Yapıştır' seçin.");
+          toast("Kutucuğa dokunup Yapıştır seçin.");
         }
       } else {
         urlInput.focus();
         urlInput.select();
-        toast("Giriş kutusuna basılı tutup 'Yapıştır' seçin.");
+        toast("Kutucuğa dokunup Yapıştır seçin.");
       }
     });
 
@@ -254,10 +214,11 @@
       runAnalyze(true);
     });
 
-    // Video vs Audio segmented switch
     document.querySelectorAll(".seg-btn[data-dlmode]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".seg-btn[data-dlmode]").forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".seg-btn[data-dlmode]")
+          .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         state.dlMode = btn.dataset.dlmode;
         $("videoOptionsBox").classList.toggle("hidden", state.dlMode !== "video");
@@ -265,29 +226,29 @@
       });
     });
 
-    // Audio format cards
     document.querySelectorAll("#audioOptionsBox .q-card").forEach((card) => {
       card.addEventListener("click", () => {
-        document.querySelectorAll("#audioOptionsBox .q-card").forEach((c) => c.classList.remove("active"));
+        document
+          .querySelectorAll("#audioOptionsBox .q-card")
+          .forEach((c) => c.classList.remove("active"));
         card.classList.add("active");
         state.selectedAudioFormat = card.dataset.afmt;
         state.selectedAudioBitrate = card.dataset.abr;
       });
     });
 
-    // Trimmer accordion
     $("btnToggleTrim").addEventListener("click", () => {
       const body = $("trimBody");
       const hidden = body.classList.toggle("hidden");
-      $("trimChevron").textContent = hidden ? "▾" : "▴";
+      $("trimChevron").classList.toggle("open", !hidden);
     });
+
     $("btnResetTrim").addEventListener("click", () => {
       $("trimStart").value = "";
       $("trimEnd").value = "";
       $("chkForceKeyframes").checked = false;
     });
 
-    // Batch mode switcher
     $("batchModeSelect").addEventListener("change", (e) => {
       const isVid = e.target.value === "video";
       $("batchVideoQualityWrap").classList.toggle("hidden", !isVid);
@@ -295,7 +256,6 @@
       document.querySelector(".batch-compat").classList.toggle("hidden", !isVid);
     });
 
-    // Playlist mode switcher
     $("plModeSelect").addEventListener("change", (e) => {
       const isVid = e.target.value === "video";
       $("plVideoQualityWrap").classList.toggle("hidden", !isVid);
@@ -303,11 +263,10 @@
     });
   }
 
-  // --- Analyze Flow ---
   async function runAnalyze(includePlaylist = false) {
     const raw = $("urlInput").value.trim();
     if (!raw) {
-      toast("Lütfen önce bir video veya sosyal medya bağlantısı girin.", "error");
+      toast("Lütfen bir bağlantı girin.", "error");
       $("urlInput").focus();
       return;
     }
@@ -332,7 +291,7 @@
         renderSinglePreview(data);
       }
     } catch (err) {
-      toast(err.message || "Analiz başarısız oldu.", "error");
+      toast(err.message || "Analiz başarısız.", "error");
     } finally {
       $("btnAnalyze").disabled = false;
       $("analyzeBtnText").textContent = "Analiz Et";
@@ -358,24 +317,24 @@
 
     $("previewPlatform").textContent = data.platform || "Medya";
     $("previewTitle").textContent = data.title || "Medya";
-    $("previewUploader").textContent = data.uploader ? `👤 ${data.uploader}` : "";
+    $("previewUploader").textContent = data.uploader || "";
     $("previewSourceLink").href = data.webpage_url || data.url;
 
-    // Reset trim values for new video
     $("trimStart").value = "";
     $("trimEnd").value = "";
-    $("trimEnd").placeholder = durTxt ? `Örn: ${durTxt}` : "Örn: 01:30";
+    $("trimEnd").placeholder = durTxt || "01:30";
 
     if (data.has_playlist_param && data.playlist_url) {
       $("playlistHintBanner").classList.remove("hidden");
     }
 
-    // Build quality grid
     const grid = $("qualityGrid");
     grid.innerHTML = "";
-    const formats = data.formats && data.formats.length ? data.formats : [{ id: "best", label: "En Yüksek Kalite (MP4)" }];
+    const formats =
+      data.formats && data.formats.length
+        ? data.formats
+        : [{ id: "best", label: "En Yüksek (MP4)" }];
 
-    // Pick smart default: 1080 if present, otherwise highest available
     const has1080 = formats.some((f) => f.id === "1080");
     state.selectedQuality = has1080 ? "1080" : formats[0].id;
 
@@ -385,7 +344,7 @@
       btn.className = `q-card ${f.id === state.selectedQuality ? "active" : ""}`;
       const sizeStr = formatBytes(f.filesize_approx);
       const fpsStr = f.fps && f.fps > 30 ? ` • ${Math.round(f.fps)}fps` : "";
-      const subParts = [sizeStr ? `~${sizeStr}` : "MP4 Video", fpsStr].join("");
+      const subParts = [sizeStr ? `~${sizeStr}` : "MP4", fpsStr].join("");
       btn.innerHTML = `
         ${f.badge ? `<span class="q-badge">${escHtml(f.badge)}</span>` : ""}
         <strong>${escHtml(f.label)}</strong>
@@ -403,9 +362,9 @@
   }
 
   function renderPlaylistCard(data) {
-    $("playlistPlatformBadge").textContent = `${data.platform} • ${data.entries.length} Öğe`;
+    $("playlistPlatformBadge").textContent = `${data.platform} • ${data.entries.length}`;
     $("playlistTitle").textContent = data.title || "Oynatma Listesi";
-    $("playlistSubtitle").textContent = data.uploader ? `👤 ${data.uploader}` : "";
+    $("playlistSubtitle").textContent = data.uploader || "";
 
     const listEl = $("playlistEntriesList");
     listEl.innerHTML = "";
@@ -414,12 +373,13 @@
       const row = document.createElement("label");
       row.className = "pl-item";
       const dur = formatDuration(entry.duration);
+      const metaParts = [dur, entry.uploader].filter(Boolean).join(" • ");
       row.innerHTML = `
         <input type="checkbox" class="pl-chk" data-idx="${idx}" checked />
         <img class="pl-thumb" src="${thumbSrc(entry.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/icon.svg'" />
         <div class="pl-info">
           <div class="pl-title">${escHtml(entry.index)}. ${escHtml(entry.title)}</div>
-          <div class="pl-meta">${dur ? `⏱️ ${escHtml(dur)}` : ""} ${entry.uploader ? `• ${escHtml(entry.uploader)}` : ""}</div>
+          <div class="pl-meta">${escHtml(metaParts)}</div>
         </div>
       `;
       row.querySelector(".pl-chk").addEventListener("change", updatePlaylistSelectedCount);
@@ -435,7 +395,6 @@
     $("plSelectedCount").textContent = String(count);
   }
 
-  // --- Start Downloads ---
   function initDownloadActions() {
     $("btnDownloadNow").addEventListener("click", async () => {
       if (!state.analyzed) return;
@@ -460,7 +419,7 @@
           method: "POST",
           body: JSON.stringify(payload),
         });
-        toast("İndirme sıraya eklendi! ⚡", "success");
+        toast("Sıraya eklendi", "success");
         await refreshJobs();
       } catch (err) {
         toast(err.message, "error");
@@ -470,20 +429,26 @@
     });
 
     $("btnSelectAllPl").addEventListener("click", () => {
-      document.querySelectorAll("#playlistEntriesList .pl-chk").forEach((c) => { c.checked = true; });
+      document.querySelectorAll("#playlistEntriesList .pl-chk").forEach((c) => {
+        c.checked = true;
+      });
       updatePlaylistSelectedCount();
     });
 
     $("btnDeselectAllPl").addEventListener("click", () => {
-      document.querySelectorAll("#playlistEntriesList .pl-chk").forEach((c) => { c.checked = false; });
+      document.querySelectorAll("#playlistEntriesList .pl-chk").forEach((c) => {
+        c.checked = false;
+      });
       updatePlaylistSelectedCount();
     });
 
     $("btnDownloadPlaylist").addEventListener("click", async () => {
       if (!state.analyzed || !state.analyzed.entries) return;
-      const checked = Array.from(document.querySelectorAll("#playlistEntriesList .pl-chk:checked"));
+      const checked = Array.from(
+        document.querySelectorAll("#playlistEntriesList .pl-chk:checked")
+      );
       if (!checked.length) {
-        toast("Lütfen listeden en az bir medya seçin.", "error");
+        toast("En az bir öğe seçin.", "error");
         return;
       }
 
@@ -513,7 +478,7 @@
           method: "POST",
           body: JSON.stringify({ items }),
         });
-        toast(`${res.jobs.length} medya indirme sırasına eklendi!`, "success");
+        toast(`${res.jobs.length} öğe sıraya eklendi`, "success");
         await refreshJobs();
       } catch (err) {
         toast(err.message, "error");
@@ -523,12 +488,12 @@
     });
 
     $("btnStartBatchUrls").addEventListener("click", async () => {
-      const lines = $("batchUrlsInput").value
-        .split(/\r?\n/)
+      const lines = $("batchUrlsInput")
+        .value.split(/\r?\n/)
         .map((l) => l.trim())
         .filter(Boolean);
       if (!lines.length) {
-        toast("Lütfen en az bir bağlantı yapıştırın.", "error");
+        toast("En az bir bağlantı girin.", "error");
         return;
       }
       const mode = $("batchModeSelect").value;
@@ -546,7 +511,7 @@
             iphone_compatible: $("batchIphoneCompat").checked,
           }),
         });
-        toast(`${res.jobs.length} bağlantı sıraya eklendi!`, "success");
+        toast(`${res.jobs.length} bağlantı sıraya eklendi`, "success");
         $("batchUrlsInput").value = "";
         await refreshJobs();
       } catch (err) {
@@ -557,12 +522,10 @@
     });
   }
 
-  // --- iPhone Native Share Sheet ("Save Video" to Photos) ---
   async function shareOrSaveToIphonePhotos(filename, btnEl) {
     if (!filename) return;
     const downloadUrl = `/api/files/${encodeURIComponent(filename)}?download=1`;
 
-    // If we already fetched and cached this File (for instant synchronous user activation)
     if (state.shareFileCache.has(filename)) {
       const cachedFile = state.shareFileCache.get(filename);
       try {
@@ -581,9 +544,9 @@
       return;
     }
 
-    const origLabel = btnEl.innerHTML;
+    const origHtml = btnEl.innerHTML;
     btnEl.disabled = true;
-    btnEl.textContent = "⏳ Hazırlanıyor...";
+    btnEl.innerHTML = `<span>Hazırlanıyor...</span>`;
 
     try {
       const resp = await fetch(downloadUrl);
@@ -598,15 +561,14 @@
 
       state.shareFileCache.set(filename, file);
       await navigator.share({ files: [file], title: filename });
-      btnEl.innerHTML = origLabel;
+      btnEl.innerHTML = origHtml;
     } catch (err) {
       if (err.name === "AbortError") {
-        btnEl.innerHTML = origLabel;
+        btnEl.innerHTML = origHtml;
       } else if (err.name === "NotAllowedError" && state.shareFileCache.has(filename)) {
-        // Transient activation expired during large file fetch; next tap is 0ms synchronous!
-        btnEl.textContent = "📲 Hazır! Galeriye Kaydetmek İçin Dokun";
+        btnEl.innerHTML = `${ICONS.share}<span>Kaydet</span>`;
       } else {
-        btnEl.innerHTML = origLabel;
+        btnEl.innerHTML = origHtml;
         window.location.href = downloadUrl;
       }
     } finally {
@@ -614,7 +576,6 @@
     }
   }
 
-  // --- Built-in Player ---
   function openMediaPlayer(filename, title) {
     const streamUrl = `/api/files/${encodeURIComponent(filename)}?download=0`;
     const isAudio = /\.(mp3|m4a|wav|opus|ogg)$/i.test(filename);
@@ -651,7 +612,6 @@
     $("playerModal").classList.add("hidden");
   }
 
-  // --- Render Queue & History ---
   function buildFileActionButtons(item) {
     if (!item.filename) return "";
     const fnEnc = encodeURIComponent(item.filename);
@@ -662,19 +622,19 @@
     const btns = [];
     if (state.isIOS || (canShareFiles && !isLocalPc)) {
       btns.push(
-        `<button type="button" class="act-btn primary js-ios-share" data-fn="${escHtml(item.filename)}">📲 Fotoğraflara / Paylaş</button>`
+        `<button type="button" class="act-btn primary js-ios-share" data-fn="${escHtml(item.filename)}">${ICONS.share}<span>Paylaş</span></button>`
       );
     }
     btns.push(
-      `<a class="act-btn ${!state.isIOS && !isLocalPc ? "primary" : ""}" href="${dlHref}" download>⬇️ Cihaza İndir</a>`
+      `<a class="act-btn ${!state.isIOS && !isLocalPc ? "primary" : ""}" href="${dlHref}" download>${ICONS.download}<span>İndir</span></a>`
     );
     if (isLocalPc) {
       btns.push(
-        `<button type="button" class="act-btn primary js-open-file" data-fn="${escHtml(item.filename)}">📂 Klasörde Göster</button>`
+        `<button type="button" class="act-btn primary js-open-file" data-fn="${escHtml(item.filename)}">${ICONS.folder}<span>Klasör</span></button>`
       );
     }
     btns.push(
-      `<button type="button" class="act-btn js-play-file" data-fn="${escHtml(item.filename)}" data-title="${escHtml(item.title)}">▶️ Oynat</button>`
+      `<button type="button" class="act-btn js-play-file" data-fn="${escHtml(item.filename)}" data-title="${escHtml(item.title)}">${ICONS.play}<span>Oynat</span></button>`
     );
     return btns.join("");
   }
@@ -686,7 +646,9 @@
     container.querySelectorAll(".js-open-file").forEach((btn) => {
       btn.addEventListener("click", async () => {
         try {
-          await api(`/api/open-folder?filename=${encodeURIComponent(btn.dataset.fn)}`, { method: "POST" });
+          await api(`/api/open-folder?filename=${encodeURIComponent(btn.dataset.fn)}`, {
+            method: "POST",
+          });
         } catch (err) {
           toast(err.message, "error");
         }
@@ -698,7 +660,9 @@
     container.querySelectorAll(".js-cancel-job").forEach((btn) => {
       btn.addEventListener("click", async () => {
         try {
-          await api(`/api/jobs/${encodeURIComponent(btn.dataset.id)}/cancel`, { method: "POST" });
+          await api(`/api/jobs/${encodeURIComponent(btn.dataset.id)}/cancel`, {
+            method: "POST",
+          });
         } catch (err) {
           toast(err.message, "error");
         }
@@ -707,7 +671,9 @@
     container.querySelectorAll(".js-del-hist").forEach((btn) => {
       btn.addEventListener("click", async () => {
         try {
-          await api(`/api/history/${encodeURIComponent(btn.dataset.id)}?delete_file=false`, { method: "DELETE" });
+          await api(`/api/history/${encodeURIComponent(btn.dataset.id)}?delete_file=false`, {
+            method: "DELETE",
+          });
           await loadHistory();
         } catch (err) {
           toast(err.message, "error");
@@ -718,12 +684,14 @@
 
   function renderJobs(jobs) {
     state.jobs = jobs || [];
-    const activeCount = state.jobs.filter((j) =>
-      j.status === "queued" || j.status === "downloading" || j.status === "processing"
+    const activeCount = state.jobs.filter(
+      (j) =>
+        j.status === "queued" ||
+        j.status === "downloading" ||
+        j.status === "processing"
     ).length;
     $("activeCountBadge").textContent = String(activeCount);
 
-    // Check if any newly completed job appeared so we refresh persistent history
     let newlyCompleted = false;
     state.jobs.forEach((j) => {
       if (j.status === "completed" && !state.completedIdsSeen.has(j.id)) {
@@ -737,12 +705,7 @@
 
     const box = $("queueList");
     if (!state.jobs.length) {
-      box.innerHTML = `
-        <div class="empty-state">
-          <p>Henüz aktif bir indirme yok.</p>
-          <small>Bir link analiz edip indirmeyi başlattığınızda hız ve ilerleme çubuğu burada görünür.</small>
-        </div>
-      `;
+      box.innerHTML = `<div class="empty-state"><p>Aktif indirme bulunmuyor</p></div>`;
       return;
     }
 
@@ -753,8 +716,8 @@
         const isRunning = !isDone && !isErr;
         const pct = isDone ? 100 : Math.max(0, Math.min(100, j.progress || 0));
         const speedEta = [
-          j.speed_text ? `🚀 ${j.speed_text}` : "",
-          j.eta_text ? `⏳ ${j.eta_text}` : "",
+          j.speed_text,
+          j.eta_text,
           j.filesize ? formatBytes(j.filesize) : formatBytes(j.total_bytes),
         ]
           .filter(Boolean)
@@ -766,14 +729,12 @@
               <img class="job-thumb" src="${thumbSrc(j.thumbnail)}" alt="" onerror="this.onerror=null;this.src='/icon.svg'" />
               <div class="job-info">
                 <div class="job-title" title="${escHtml(j.title)}">${escHtml(j.title)}</div>
-                <div class="job-sub">
-                  <span>${escHtml(j.platform)}</span> • <span>${escHtml(j.quality_label)}</span>
-                </div>
+                <div class="job-sub">${escHtml(j.platform)} • ${escHtml(j.quality_label)}</div>
               </div>
             </div>
 
             <div class="progress-track">
-              <div class="progress-fill ${isDone ? "done" : ""} ${isErr ? "err" : ""}" style="width:${pct}%"></div>
+              <div class="progress-fill ${isErr ? "err" : ""}" style="width:${pct}%"></div>
             </div>
 
             <div class="job-stats">
@@ -781,10 +742,10 @@
               <span>${escHtml(speedEta)}</span>
             </div>
 
-            ${j.error ? `<div class="job-error">⚠️ ${escHtml(j.error)}</div>` : ""}
+            ${j.error ? `<div class="job-error">${escHtml(j.error)}</div>` : ""}
 
             <div class="job-actions">
-              ${isRunning ? `<button type="button" class="act-btn danger js-cancel-job" data-id="${escHtml(j.id)}">✕ İptal Et</button>` : ""}
+              ${isRunning ? `<button type="button" class="act-btn danger js-cancel-job" data-id="${escHtml(j.id)}">${ICONS.close}<span>İptal</span></button>` : ""}
               ${isDone ? buildFileActionButtons(j) : ""}
             </div>
           </div>
@@ -812,34 +773,28 @@
 
       const box = $("historyList");
       if (!state.history.length) {
-        box.innerHTML = `
-          <div class="empty-state">
-            <p>İndirme geçmişi boş.</p>
-            <small>İndirdiğiniz tüm videolar ve sesler iPhone veya PC'ye kaydetmeniz için burada listelenir.</small>
-          </div>
-        `;
+        box.innerHTML = `<div class="empty-state"><p>Henüz indirilen medya yok</p></div>`;
         return;
       }
 
       box.innerHTML = state.history
         .map((item) => {
           const sizeTxt = formatBytes(item.filesize);
+          const sub = [item.platform, item.quality_label, sizeTxt]
+            .filter(Boolean)
+            .join(" • ");
           return `
             <div class="job-item">
               <div class="job-top">
                 <img class="job-thumb" src="${thumbSrc(item.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/icon.svg'" />
                 <div class="job-info">
                   <div class="job-title" title="${escHtml(item.title)}">${escHtml(item.title)}</div>
-                  <div class="job-sub">
-                    <span>${escHtml(item.platform)}</span> •
-                    <span>${escHtml(item.quality_label)}</span>
-                    ${sizeTxt ? `• <span>${escHtml(sizeTxt)}</span>` : ""}
-                  </div>
+                  <div class="job-sub">${escHtml(sub)}</div>
                 </div>
               </div>
               <div class="job-actions">
-                ${item.file_exists ? buildFileActionButtons(item) : `<span class="helper-text">Dosya taşınmış veya silinmiş</span>`}
-                <button type="button" class="act-btn danger js-del-hist" data-id="${escHtml(item.id)}" title="Listeden kaldır">🗑️</button>
+                ${item.file_exists ? buildFileActionButtons(item) : `<span class="helper-text" style="margin:0;flex:1">Dosya süresi doldu</span>`}
+                <button type="button" class="act-btn icon-only danger js-del-hist" data-id="${escHtml(item.id)}" aria-label="Sil" title="Kaldır">${ICONS.trash}</button>
               </div>
             </div>
           `;
@@ -853,9 +808,8 @@
   }
 
   function connectSSE() {
-    let es = null;
     try {
-      es = new EventSource("/api/events");
+      const es = new EventSource("/api/events");
       es.onmessage = (ev) => {
         try {
           const parsed = JSON.parse(ev.data);
@@ -873,16 +827,10 @@
     }
   }
 
-  // --- Modals & Topbar Controls ---
   function initModals() {
     $("btnCookies").addEventListener("click", async () => {
       await loadSystemInfo();
       $("cookieModal").classList.remove("hidden");
-    });
-
-    $("btnIphoneModal").addEventListener("click", async () => {
-      await loadSystemInfo();
-      $("iphoneModal").classList.remove("hidden");
     });
 
     $("btnClosePlayer").addEventListener("click", closeMediaPlayer);
@@ -903,12 +851,6 @@
       });
     });
 
-    $("btnCopyCloudUrl").addEventListener("click", () => {
-      const txt = $("cloudUrlText").textContent;
-      navigator.clipboard?.writeText(txt);
-      toast("7/24 Bulut adresi kopyalandı!", "success");
-    });
-
     $("btnLogout").addEventListener("click", async () => {
       await api("/api/auth/logout", { method: "POST" });
       $("authModal").classList.remove("hidden");
@@ -927,10 +869,10 @@
           body: JSON.stringify({ password: pw }),
         });
         $("authModal").classList.add("hidden");
-        toast("Giriş başarılı! Hoş geldiniz.", "success");
+        toast("Giriş yapıldı", "success");
         await bootAuthenticated();
       } catch (err) {
-        toast(err.message || "Hatalı şifre.", "error");
+        toast(err.message || "Hatalı şifre", "error");
       } finally {
         $("btnAuthSubmit").disabled = false;
       }
@@ -948,7 +890,7 @@
       try {
         const updated = await api("/api/cookies/upload", { method: "POST", body: fd });
         updateCookieUI(updated);
-        toast("cookies.txt başarıyla yüklendi!", "success");
+        toast("cookies.txt yüklendi", "success");
       } catch (err) {
         toast(err.message, "error");
       }
@@ -959,7 +901,7 @@
         const updated = await api("/api/cookies/file", { method: "DELETE" });
         $("cookieTextArea").value = "";
         updateCookieUI(updated);
-        toast("Çerez dosyası silindi.");
+        toast("Çerez dosyası silindi");
       } catch (err) {
         toast(err.message, "error");
       }
@@ -969,18 +911,19 @@
       try {
         const data = await api("/api/cookies");
         if (!data.cookies_base64) {
-          toast("Önce bir cookies.txt dosyası yükleyin.", "error");
+          toast("Önce bir cookies.txt yükleyin.", "error");
           return;
         }
         await navigator.clipboard.writeText(data.cookies_base64);
-        toast("COOKIES_BASE64 kodu panoya kopyalandı! Render -> Environment kısmına yapıştırabilirsiniz.", "success");
+        toast("COOKIES_BASE64 panoya kopyalandı", "success");
       } catch (err) {
         toast(err.message, "error");
       }
     });
 
     $("btnSaveCookies").addEventListener("click", async () => {
-      const mode = document.querySelector('input[name="cookieMode"]:checked')?.value || "none";
+      const mode =
+        document.querySelector('input[name="cookieMode"]:checked')?.value || "none";
       const browser = $("cookieBrowserSelect").value;
       const cookiesText = $("cookieTextArea").value.trim() || null;
       try {
@@ -991,51 +934,12 @@
         $("cookieTextArea").value = "";
         updateCookieUI(updated);
         $("cookieModal").classList.add("hidden");
-        toast("Çerez ayarları kaydedildi.", "success");
+        toast("Ayarlar kaydedildi", "success");
       } catch (err) {
         toast(err.message, "error");
       }
     });
 
-    // Copy URLs & Tunnel buttons
-    $("btnCopyLanUrl").addEventListener("click", () => {
-      const txt = $("lanUrlText").textContent;
-      navigator.clipboard?.writeText(txt);
-      toast("Wi-Fi adresi panoya kopyalandı!", "success");
-    });
-
-    $("btnCopyTunnelUrl").addEventListener("click", () => {
-      const txt = $("tunnelUrlText").textContent;
-      navigator.clipboard?.writeText(txt);
-      toast("HTTPS Tünel adresi kopyalandı!", "success");
-    });
-
-    $("btnStartTunnel").addEventListener("click", async () => {
-      const btn = $("btnStartTunnel");
-      btn.disabled = true;
-      btn.textContent = "⏳ Tünel açılıyor (5-8 sn)...";
-      try {
-        const st = await api("/api/tunnel/start", { method: "POST" });
-        renderTunnelState(st);
-        if (st.public_url) {
-          toast("HTTPS Tüneli aktif! QR kodu okutabilirsiniz.", "success");
-        } else if (st.error) {
-          toast(st.error, "error");
-        }
-      } catch (err) {
-        toast(err.message, "error");
-        btn.disabled = false;
-        btn.textContent = "⚡ HTTPS Tünelini Başlat";
-      }
-    });
-
-    $("btnStopTunnel").addEventListener("click", async () => {
-      const st = await api("/api/tunnel/stop", { method: "POST" });
-      renderTunnelState(st);
-      toast("HTTPS Tüneli kapatıldı.");
-    });
-
-    // Queue & History header actions
     $("btnOpenDownloadsDir").addEventListener("click", async () => {
       try {
         await api("/api/open-folder", { method: "POST" });
@@ -1053,7 +957,7 @@
       if (!state.history.length) return;
       await api("/api/history?delete_files=false", { method: "DELETE" });
       await loadHistory();
-      toast("İndirme geçmişi temizlendi.");
+      toast("Geçmiş temizlendi");
     });
   }
 
@@ -1072,7 +976,6 @@
     }
   }
 
-  // --- Boot ---
   document.addEventListener("DOMContentLoaded", async () => {
     initTabs();
     initDownloadActions();
