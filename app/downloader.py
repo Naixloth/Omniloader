@@ -146,17 +146,11 @@ def _base_ydl_opts(apply_cookies: bool = True, target_url: str | None = None) ->
         except Exception:
             pass
     elif CLOUD_MODE:
-        ext_args: dict[str, Any] = {
+        opts["extractor_args"] = {
             "youtube": {
                 "player_client": ["mweb", "tv_embedded", "ios", "web"],
             }
         }
-        bgutil_script = Path("/opt/bgutil/server/build/generate_once.js")
-        if bgutil_script.exists():
-            ext_args["youtubepot-bgutilscript"] = {
-                "script_path": [str(bgutil_script)],
-            }
-        opts["extractor_args"] = ext_args
 
     if apply_cookies:
         settings = load_settings()

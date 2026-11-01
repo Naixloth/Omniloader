@@ -49,4 +49,4 @@ RUN mkdir -p /app/downloads /app/data/temp /app/bin && \
 USER appuser
 EXPOSE 10000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["sh", "-c", "node --max-old-space-size=128 /opt/bgutil/server/build/main.js --port 4416 >/dev/null 2>&1 & exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
