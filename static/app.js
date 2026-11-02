@@ -15,6 +15,9 @@
     isIOS:
       /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
+    isStandalone:
+      Boolean(window.navigator.standalone) ||
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches),
     analyzed: null,
     dlMode: "video",
     selectedQuality: "1080",
@@ -39,7 +42,7 @@
 
   function thumbSrc(rawUrl) {
     if (!rawUrl || !String(rawUrl).startsWith("http")) {
-      return "/icon.svg";
+      return "/logo-128.png?v=4";
     }
     return `/api/thumbnail?url=${encodeURIComponent(rawUrl)}`;
   }
@@ -185,24 +188,65 @@
     });
 
     $("btnPaste").addEventListener("click", async () => {
-      if (navigator.clipboard && navigator.clipboard.readText) {
+      let pastedText = "";
+      let readExecuted = false;
+
+      // On iOS Safari, copied links from Instagram/YouTube/Safari are often stored as
+      // 'text/uri-list' or 'text/html' rather than 'text/plain', making readText() return empty!
+      if (navigator.clipboard && navigator.clipboard.read) {
         try {
-          const txt = await navigator.clipboard.readText();
-          if (txt && txt.trim()) {
-            urlInput.value = txt.trim();
-            clearBtn.classList.remove("hidden");
-            runAnalyze(false);
-            return;
+          const items = await navigator.clipboard.read();
+          readExecuted = true;
+          for (const item of items) {
+            const preferred = ["text/plain", "text/uri-list", "text/html"];
+            const types = [
+              ...preferred.filter((t) => item.types.includes(t)),
+              ...item.types.filter((t) => !preferred.includes(t) && t.startsWith("text/")),
+            ];
+            for (const mime of types) {
+              try {
+                const blob = await item.getType(mime);
+                const raw = (await blob.text()).trim();
+                if (!raw) continue;
+                const urlMatch = raw.match(/https?:\/\/[^\s<>"']+/i);
+                if (urlMatch) {
+                  pastedText = urlMatch[0].replace(/[.,;)]+$/, "");
+                  break;
+                }
+                if (mime !== "text/html") {
+                  pastedText = raw;
+                  break;
+                }
+              } catch {
+                // try next MIME representation
+              }
+            }
+            if (pastedText) break;
           }
-          toast("Panoda bağlantı bulunamadı.", "error");
         } catch {
-          urlInput.focus();
-          toast("Kutucuğa dokunup Yapıştır seçin.");
+          readExecuted = false;
         }
+      }
+
+      if (!pastedText && !readExecuted && navigator.clipboard && navigator.clipboard.readText) {
+        try {
+          const txt = (await navigator.clipboard.readText()).trim();
+          if (txt) {
+            const urlMatch = txt.match(/https?:\/\/[^\s<>"']+/i);
+            pastedText = urlMatch ? urlMatch[0].replace(/[.,;)]+$/, "") : txt;
+          }
+        } catch {
+          // fall through to manual input focus
+        }
+      }
+
+      if (pastedText) {
+        urlInput.value = pastedText;
+        clearBtn.classList.remove("hidden");
+        runAnalyze(false);
       } else {
         urlInput.focus();
-        urlInput.select();
-        toast("Kutucuğa dokunup Yapıştır seçin.");
+        toast("Kutucuğa basılı tutup Yapıştır seçebilirsiniz.");
       }
     });
 
@@ -303,7 +347,7 @@
     $("previewThumb").src = thumbSrc(data.thumbnail);
     $("previewThumb").onerror = () => {
       $("previewThumb").onerror = null;
-      $("previewThumb").src = "/icon.svg";
+      $("previewThumb").src = "/logo-128.png?v=4";
     };
 
     const durEl = $("previewDuration");
@@ -376,7 +420,7 @@
       const metaParts = [dur, entry.uploader].filter(Boolean).join(" • ");
       row.innerHTML = `
         <input type="checkbox" class="pl-chk" data-idx="${idx}" checked />
-        <img class="pl-thumb" src="${thumbSrc(entry.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/icon.svg'" />
+        <img class="pl-thumb" src="${thumbSrc(entry.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/logo-128.png?v=4'" />
         <div class="pl-info">
           <div class="pl-title">${escHtml(entry.index)}. ${escHtml(entry.title)}</div>
           <div class="pl-meta">${escHtml(metaParts)}</div>
@@ -530,17 +574,20 @@
       const cachedFile = state.shareFileCache.get(filename);
       try {
         await navigator.share({ files: [cachedFile], title: filename });
-        return;
       } catch (err) {
-        if (err.name !== "AbortError") {
+        if (err.name !== "AbortError" && !state.isStandalone) {
           window.location.href = downloadUrl;
         }
-        return;
       }
+      return;
     }
 
     if (!navigator.canShare) {
-      window.location.href = downloadUrl;
+      if (state.isStandalone) {
+        openMediaPlayer(filename, filename);
+      } else {
+        window.location.href = downloadUrl;
+      }
       return;
     }
 
@@ -551,11 +598,37 @@
     try {
       const resp = await fetch(downloadUrl);
       if (!resp.ok) throw new Error("Dosya alınamadı");
-      const blob = await resp.blob();
+
+      const contentType = resp.headers.get("content-type") || "video/mp4";
+      const totalLen = Number(resp.headers.get("content-length") || 0);
+      let blob;
+
+      if (resp.body && totalLen > 0) {
+        const reader = resp.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.byteLength;
+          const pct = Math.min(99, Math.round((received / totalLen) * 100));
+          btnEl.innerHTML = `<span>%${pct}</span>`;
+        }
+        blob = new Blob(chunks, { type: contentType });
+      } else {
+        blob = await resp.blob();
+      }
+
       const file = new File([blob], filename, { type: blob.type || "video/mp4" });
 
       if (!navigator.canShare({ files: [file] })) {
-        window.location.href = downloadUrl;
+        btnEl.innerHTML = origHtml;
+        if (state.isStandalone) {
+          openMediaPlayer(filename, filename);
+        } else {
+          window.location.href = downloadUrl;
+        }
         return;
       }
 
@@ -565,11 +638,17 @@
     } catch (err) {
       if (err.name === "AbortError") {
         btnEl.innerHTML = origHtml;
-      } else if (err.name === "NotAllowedError" && state.shareFileCache.has(filename)) {
-        btnEl.innerHTML = `${ICONS.share}<span>Kaydet</span>`;
+      } else if (state.shareFileCache.has(filename)) {
+        // iOS transient user-activation timed out during download — 1 tap opens Share Sheet instantly
+        btnEl.innerHTML = `${ICONS.download}<span>Kaydet (Hazır)</span>`;
+        toast("Dosya hazır — kaydetmek için tekrar dokunun", "success");
       } else {
         btnEl.innerHTML = origHtml;
-        window.location.href = downloadUrl;
+        if (!state.isStandalone) {
+          window.location.href = downloadUrl;
+        } else {
+          toast("Dosya alınamadı, lütfen tekrar deneyin.", "error");
+        }
       }
     } finally {
       btnEl.disabled = false;
@@ -620,14 +699,22 @@
     const canShareFiles = Boolean(navigator.canShare);
 
     const btns = [];
-    if (state.isIOS || (canShareFiles && !isLocalPc)) {
+    if (state.isIOS && state.isStandalone) {
+      // In iOS Home Screen Standalone mode, <a download> traps the WebView on a black screen with no Back button.
+      // Use native iOS Share/Save Sheet overlay ("Videoyu Kaydet" / "Dosyalara Kaydet") so user stays inside Omniloader!
       btns.push(
-        `<button type="button" class="act-btn primary js-ios-share" data-fn="${escHtml(item.filename)}">${ICONS.share}<span>Paylaş</span></button>`
+        `<button type="button" class="act-btn primary js-ios-share" data-fn="${escHtml(item.filename)}">${ICONS.download}<span>İndir / Kaydet</span></button>`
+      );
+    } else {
+      if (state.isIOS || (canShareFiles && !isLocalPc)) {
+        btns.push(
+          `<button type="button" class="act-btn primary js-ios-share" data-fn="${escHtml(item.filename)}">${ICONS.share}<span>Kaydet / Paylaş</span></button>`
+        );
+      }
+      btns.push(
+        `<a class="act-btn ${!state.isIOS && !isLocalPc ? "primary" : ""}" href="${dlHref}" download>${ICONS.download}<span>İndir</span></a>`
       );
     }
-    btns.push(
-      `<a class="act-btn ${!state.isIOS && !isLocalPc ? "primary" : ""}" href="${dlHref}" download>${ICONS.download}<span>İndir</span></a>`
-    );
     if (isLocalPc) {
       btns.push(
         `<button type="button" class="act-btn primary js-open-file" data-fn="${escHtml(item.filename)}">${ICONS.folder}<span>Klasör</span></button>`
@@ -726,7 +813,7 @@
         return `
           <div class="job-item">
             <div class="job-top">
-              <img class="job-thumb" src="${thumbSrc(j.thumbnail)}" alt="" onerror="this.onerror=null;this.src='/icon.svg'" />
+              <img class="job-thumb" src="${thumbSrc(j.thumbnail)}" alt="" onerror="this.onerror=null;this.src='/logo-128.png?v=4'" />
               <div class="job-info">
                 <div class="job-title" title="${escHtml(j.title)}">${escHtml(j.title)}</div>
                 <div class="job-sub">${escHtml(j.platform)} • ${escHtml(j.quality_label)}</div>
@@ -786,7 +873,7 @@
           return `
             <div class="job-item">
               <div class="job-top">
-                <img class="job-thumb" src="${thumbSrc(item.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/icon.svg'" />
+                <img class="job-thumb" src="${thumbSrc(item.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/logo-128.png?v=4'" />
                 <div class="job-info">
                   <div class="job-title" title="${escHtml(item.title)}">${escHtml(item.title)}</div>
                   <div class="job-sub">${escHtml(sub)}</div>

@@ -1,3 +1,5 @@
+FROM mwader/static-ffmpeg:8.0.1 AS ffmpeg_base
+
 FROM node:22-bookworm-slim AS node_base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,7 +20,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=10000
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
     ca-certificates \
     curl \
     libcairo2 \
@@ -29,6 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librsvg2-2 \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=ffmpeg_base /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg_base /ffprobe /usr/local/bin/ffprobe
 COPY --from=node_base /usr/local/bin/node /usr/local/bin/node
 COPY --from=node_base /opt/bgutil/server /opt/bgutil/server
 
@@ -37,7 +40,7 @@ WORKDIR /app
 
 COPY requirements-cloud.txt /app/requirements-cloud.txt
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /app/requirements-cloud.txt
+    pip install --no-cache-dir --upgrade -r /app/requirements-cloud.txt
 
 COPY app /app/app
 COPY static /app/static

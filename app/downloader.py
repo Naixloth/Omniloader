@@ -548,32 +548,87 @@ def analyze_url(raw_url: str, include_playlist: bool = False) -> AnalyzeResponse
     )
 
 
-def _probe_streams(filepath: Path) -> list[dict[str, Any]]:
-    ffprobe = get_ffprobe_binary()
-    if not ffprobe or not filepath.exists():
-        return []
+_FFPROBE_USABLE = True
+
+
+def _probe_media(filepath: Path) -> tuple[list[dict[str, Any]], float | None]:
+    global _FFPROBE_USABLE
+    if not filepath.exists():
+        return [], None
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+    ffprobe = get_ffprobe_binary() if _FFPROBE_USABLE else None
+    if ffprobe:
+        try:
+            res = subprocess.run(
+                [
+                    ffprobe,
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "stream=codec_type,codec_name,codec_tag_string,profile:format=duration",
+                    "-of",
+                    "json",
+                    str(filepath),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                creationflags=creationflags,
+            )
+            if res.returncode == 0 and res.stdout:
+                data = json.loads(res.stdout)
+                streams = data.get("streams") or []
+                dur_raw = (data.get("format") or {}).get("duration")
+                dur = float(dur_raw) if dur_raw else None
+                if streams:
+                    return streams, dur
+        except OSError:
+            _FFPROBE_USABLE = False
+        except Exception:
+            pass
+
+    # Fallback via ffmpeg -i (works even when ffprobe is absent or blocked by Windows Smart App Control)
+    ffmpeg = get_ffmpeg_binary()
+    if not ffmpeg:
+        return [], None
     try:
         res = subprocess.run(
-            [
-                ffprobe,
-                "-v",
-                "error",
-                "-show_entries",
-                "stream=codec_type,codec_name,codec_tag_string",
-                "-of",
-                "json",
-                str(filepath),
-            ],
+            [ffmpeg, "-hide_banner", "-i", str(filepath)],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=10,
             creationflags=creationflags,
         )
-        data = json.loads(res.stdout or "{}")
-        return data.get("streams") or []
+        info_txt = res.stderr or ""
+        dur: float | None = None
+        m_dur = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", info_txt)
+        if m_dur:
+            dur = int(m_dur.group(1)) * 3600 + int(m_dur.group(2)) * 60 + float(m_dur.group(3))
+
+        streams_out: list[dict[str, Any]] = []
+        for m_st in re.finditer(r"Stream #\d+:\d+[^\n]*?:\s*(Video|Audio):\s*([a-zA-Z0-9_]+)([^\n]*)", info_txt):
+            kind = m_st.group(1).lower()
+            cname = m_st.group(2).lower()
+            rest = m_st.group(3)
+            rest_lower = rest.lower()
+            tag = "hvc1" if "hvc1" in rest_lower else ("avc1" if "avc1" in rest_lower else "")
+            streams_out.append(
+                {
+                    "codec_type": kind,
+                    "codec_name": cname,
+                    "codec_tag_string": tag,
+                    "profile": rest,
+                }
+            )
+        return streams_out, dur
     except Exception:
-        return []
+        return [], None
+
+
+def _probe_streams(filepath: Path) -> list[dict[str, Any]]:
+    streams, _ = _probe_media(filepath)
+    return streams
 
 
 def _ensure_compatible_mp4(
@@ -582,12 +637,12 @@ def _ensure_compatible_mp4(
     on_status: Callable[[str], None],
     is_cancelled: Callable[[], bool],
 ) -> Path:
-    """Ensure MP4 audio/video streams play smoothly on Windows & iPhone 15 Photos."""
+    """Ensure MP4 audio/video streams play with sound on Windows & iPhone Photos."""
     ffmpeg = get_ffmpeg_binary()
     if not ffmpeg or not filepath.exists() or filepath.suffix.lower() != ".mp4":
         return filepath
 
-    streams = _probe_streams(filepath)
+    streams, duration_sec = _probe_media(filepath)
     if not streams:
         return filepath
 
@@ -599,10 +654,16 @@ def _ensure_compatible_mp4(
     vcodec = (v_stream.get("codec_name") or "").lower()
     vtag = (v_stream.get("codec_tag_string") or "").lower()
     acodec = (a_stream.get("codec_name") or "").lower() if a_stream else None
+    aprofile = (a_stream.get("profile") or "").lower() if a_stream else ""
 
     need_video_reencode = iphone_compatible and vcodec not in ("h264", "hevc")
     need_hvc1_tag = iphone_compatible and vcodec == "hevc" and vtag != "hvc1"
-    need_audio_aac = acodec is not None and acodec not in ("aac", "mp3", "alac")
+    # Also transcode xHE-AAC / USAC (mp4a.40.42) to standard AAC-LC so audio never goes silent
+    need_audio_aac = acodec is not None and (
+        acodec not in ("aac", "mp3", "alac")
+        or "xhe" in aprofile
+        or "usac" in aprofile
+    )
 
     if not (need_video_reencode or need_hvc1_tag or need_audio_aac):
         return filepath
@@ -614,12 +675,13 @@ def _ensure_compatible_mp4(
     cmd = [ffmpeg, "-y", "-i", str(filepath)]
 
     if need_video_reencode:
-        on_status("iPhone 15 Galeri uyumlu (H.264) formata dönüştürülüyor...")
+        on_status("Uyumlu formata dönüştürülüyor (H.264)...")
         preset = "ultrafast" if CLOUD_MODE else "veryfast"
+        crf = "24" if CLOUD_MODE else "22"
         extra_threads = ["-threads", "2"] if CLOUD_MODE else []
-        cmd.extend(["-c:v", "libx264", "-preset", preset, "-crf", "21", "-pix_fmt", "yuv420p", *extra_threads])
+        cmd.extend(["-c:v", "libx264", "-preset", preset, "-crf", crf, "-pix_fmt", "yuv420p", *extra_threads])
     else:
-        on_status("MP4 ses/etiket uyumluluğu optimize ediliyor...")
+        on_status("Ses akışı optimize ediliyor (AAC)...")
         cmd.extend(["-c:v", "copy"])
         if need_hvc1_tag:
             cmd.extend(["-tag:v", "hvc1"])
@@ -630,22 +692,44 @@ def _ensure_compatible_mp4(
         else:
             cmd.extend(["-c:a", "copy"])
 
-    cmd.extend(["-movflags", "+faststart", str(temp_out)])
+    cmd.extend(["-movflags", "+faststart", "-progress", "pipe:1", "-nostats", str(temp_out)])
 
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
         creationflags=creationflags,
     )
+
+    def _read_ffmpeg_progress() -> None:
+        if not proc.stdout or not need_video_reencode or not duration_sec or duration_sec <= 0:
+            return
+        last_update = 0.0
+        for line in proc.stdout:
+            if line.startswith("out_time_us="):
+                val = line.split("=", 1)[1].strip()
+                if val.isdigit():
+                    sec_done = int(val) / 1_000_000.0
+                    pct = min(99, max(1, int((sec_done / duration_sec) * 100)))
+                    now = time.time()
+                    if now - last_update >= 0.4:
+                        last_update = now
+                        on_status(f"Uyumlu formata dönüştürülüyor (%{pct})...")
+
+    reader = threading.Thread(target=_read_ffmpeg_progress, daemon=True)
+    reader.start()
+
     while proc.poll() is None:
         if is_cancelled():
             proc.kill()
             if temp_out.exists():
                 temp_out.unlink(missing_ok=True)
             raise DownloadCancelled("İndirme kullanıcı tarafından iptal edildi.")
-        time.sleep(0.25)
+        time.sleep(0.2)
+
+    reader.join(timeout=1.0)
 
     if proc.returncode == 0 and temp_out.exists() and temp_out.stat().st_size > 0:
         filepath.unlink(missing_ok=True)
@@ -869,6 +953,24 @@ class DownloadQueueManager:
 
         try:
             if job.req.mode == "video":
+                # If DASH merge produced a silent video-only container, retry combined MP4 stream
+                initial_streams = _probe_streams(final_path)
+                if initial_streams and not any(s.get("codec_type") == "audio" for s in initial_streams):
+                    fallback_dir = job_temp_dir / "prog_fallback"
+                    fallback_dir.mkdir(parents=True, exist_ok=True)
+                    try:
+                        alt_path = self._execute_ytdlp(
+                            job,
+                            fallback_dir,
+                            use_cookies=True,
+                            force_progressive=True,
+                        )
+                        alt_streams = _probe_streams(alt_path)
+                        if any(s.get("codec_type") == "audio" for s in alt_streams):
+                            final_path = alt_path
+                    except Exception:
+                        pass
+
                 def _on_status(txt: str) -> None:
                     job.status = "processing"
                     job.status_text = txt
@@ -940,7 +1042,13 @@ class DownloadQueueManager:
         finally:
             shutil.rmtree(job_temp_dir, ignore_errors=True)
 
-    def _execute_ytdlp(self, job: DownloadJob, temp_dir: Path, use_cookies: bool) -> Path:
+    def _execute_ytdlp(
+        self,
+        job: DownloadJob,
+        temp_dir: Path,
+        use_cookies: bool,
+        force_progressive: bool = False,
+    ) -> Path:
         opts = _base_ydl_opts(apply_cookies=use_cookies, target_url=job.url)
         if job.req.playlist_item:
             opts["noplaylist"] = False
@@ -961,7 +1069,7 @@ class DownloadQueueManager:
         postprocessors: list[dict[str, Any]] = []
 
         if req.mode == "audio":
-            opts["format"] = "bestaudio/best"
+            opts["format"] = "ba[acodec!*=40.42][acodec!*=usac]/bestaudio/best"
             postprocessors.append(
                 {
                     "key": "FFmpegExtractAudio",
@@ -974,19 +1082,28 @@ class DownloadQueueManager:
                 postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
                 postprocessors.append({"key": "EmbedThumbnail"})
         else:
-            # Video mode — support both landscape and portrait (Reels/Shorts/TikTok) cleanly via format_sort
-            opts["format"] = "bestvideo+bestaudio/best"
+            # Prefer standard AAC/M4A over Instagram's xHE-AAC (mp4a.40.42) so audio never drops
+            if force_progressive:
+                opts["format"] = "b[ext=mp4]/b"
+            else:
+                opts["format"] = "bv*+ba[acodec!*=40.42][acodec!*=usac]/bv*+ba/b"
             opts["merge_output_format"] = "mp4"
 
             sort_rules: list[str] = []
-            if CLOUD_MODE and req.iphone_compatible and req.quality == "best":
+            is_ultra_hd = req.quality in ("2160", "1440")
+            if req.iphone_compatible and not is_ultra_hd:
+                # Prioritize native H.264 upfront so <=1080p never stalls at 99% re-encoding VP9
                 sort_rules.append("vcodec:h264")
-            if req.quality and req.quality != "best" and req.quality.isdigit():
-                sort_rules.append(f"res:{req.quality}")
-            if req.iphone_compatible:
-                sort_rules.extend(["vcodec:h264", "acodec:m4a", "ext:mp4:m4a"])
+                if req.quality and req.quality != "best" and req.quality.isdigit():
+                    sort_rules.append(f"res:{req.quality}")
+                sort_rules.extend(["acodec:aac:m4a", "ext:mp4:m4a"])
             else:
-                sort_rules.extend(["acodec:m4a", "ext:mp4:m4a"])
+                if req.quality and req.quality != "best" and req.quality.isdigit():
+                    sort_rules.append(f"res:{req.quality}")
+                if req.iphone_compatible:
+                    sort_rules.extend(["vcodec:h264", "acodec:aac:m4a", "ext:mp4:m4a"])
+                else:
+                    sort_rules.extend(["acodec:aac:m4a", "ext:mp4:m4a"])
             opts["format_sort"] = sort_rules
             postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
 
