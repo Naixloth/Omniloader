@@ -305,6 +305,12 @@
       $("plVideoQualityWrap").classList.toggle("hidden", !isVid);
       $("plAudioFormatWrap").classList.toggle("hidden", isVid);
     });
+
+    $("chkIphoneCompat").addEventListener("change", () => {
+      if (state.analyzed && !state.analyzed.is_playlist) {
+        renderQualityGrid(state.analyzed.formats);
+      }
+    });
   }
 
   async function runAnalyze(includePlaylist = false) {
@@ -372,8 +378,6 @@
       $("playlistHintBanner").classList.remove("hidden");
     }
 
-    const grid = $("qualityGrid");
-    grid.innerHTML = "";
     const formats =
       data.formats && data.formats.length
         ? data.formats
@@ -381,14 +385,32 @@
 
     const has1080 = formats.some((f) => f.id === "1080");
     state.selectedQuality = has1080 ? "1080" : formats[0].id;
+    renderQualityGrid(formats);
+
+    $("previewCard").classList.remove("hidden");
+  }
+
+  function renderQualityGrid(rawFormats) {
+    const grid = $("qualityGrid");
+    grid.innerHTML = "";
+    const formats =
+      rawFormats && rawFormats.length
+        ? rawFormats
+        : [{ id: "best", label: "En Yüksek (MP4)" }];
+    const compatOn = Boolean($("chkIphoneCompat") && $("chkIphoneCompat").checked);
 
     formats.forEach((f) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = `q-card ${f.id === state.selectedQuality ? "active" : ""}`;
-      const sizeStr = formatBytes(f.filesize_approx);
+      const numTier = Number(f.id);
+      const useH264Size =
+        compatOn && !isNaN(numTier) && numTier > 0 && numTier < 1440 && f.filesize_h264;
+      const sizeStr = formatBytes(useH264Size ? f.filesize_h264 : f.filesize_approx);
       const fpsStr = f.fps && f.fps > 30 ? ` • ${Math.round(f.fps)}fps` : "";
       const subParts = [sizeStr ? `~${sizeStr}` : "MP4", fpsStr].join("");
+      const tip = [f.dimensions, sizeStr ? `~${sizeStr}` : ""].filter(Boolean).join(" • ");
+      if (tip) btn.title = tip;
       btn.innerHTML = `
         ${f.badge ? `<span class="q-badge">${escHtml(f.badge)}</span>` : ""}
         <strong>${escHtml(f.label)}</strong>
@@ -401,8 +423,6 @@
       });
       grid.appendChild(btn);
     });
-
-    $("previewCard").classList.remove("hidden");
   }
 
   function renderPlaylistCard(data) {
@@ -508,7 +528,7 @@
           quality,
           audio_format: audioFmt,
           audio_bitrate: "320",
-          iphone_compatible: true,
+          iphone_compatible: state.isIOS,
           title_hint: entry.title,
           thumbnail_hint: entry.thumbnail || state.analyzed.thumbnail,
           platform_hint: state.analyzed.platform,
@@ -1064,6 +1084,10 @@
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    // Enable H.264 gallery compatibility automatically on iOS; keep unchecked on PC for untouched max-bitrate VP9/4K/2K
+    $("chkIphoneCompat").checked = state.isIOS;
+    $("batchIphoneCompat").checked = state.isIOS;
+
     initTabs();
     initDownloadActions();
     initModals();

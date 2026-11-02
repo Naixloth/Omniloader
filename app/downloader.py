@@ -251,56 +251,85 @@ def _pick_best_thumbnail(info: dict[str, Any]) -> str | None:
 
 def _build_format_options(info: dict[str, Any]) -> list[FormatOption]:
     formats = info.get("formats") or []
-    best_audio_size = 0
+    best_aac_audio_size = 0
+    best_any_audio_size = 0
     for f in formats:
-        if f.get("acodec") not in (None, "none") and f.get("vcodec") in (None, "none"):
+        ac = (f.get("acodec") or "").lower()
+        vc = f.get("vcodec")
+        if ac not in ("", "none") and vc in (None, "none"):
+            if "40.42" in ac or "usac" in ac:
+                continue
             sz = f.get("filesize") or f.get("filesize_approx") or 0
-            if sz > best_audio_size:
-                best_audio_size = sz
+            if sz > best_any_audio_size:
+                best_any_audio_size = sz
+            if ("mp4a" in ac or "aac" in ac) and sz > best_aac_audio_size:
+                best_aac_audio_size = sz
+    best_audio_size = best_aac_audio_size or best_any_audio_size
 
     buckets: dict[int, dict[str, Any]] = {}
-    standard_tiers = [2160, 1440, 1080, 720, 480, 360, 240]
+    standard_tiers = [4320, 2160, 1440, 1080, 720, 540, 480, 360, 240, 144]
 
     for f in formats:
-        vcodec = f.get("vcodec")
+        vcodec = (f.get("vcodec") or "").lower()
         if not vcodec or vcodec == "none":
             continue
-        w = f.get("width") or 0
-        h = f.get("height") or 0
+        w = int(f.get("width") or 0)
+        h = int(f.get("height") or 0)
         if w <= 0 and h <= 0:
             continue
-        # Handle both landscape (1920x1080 -> 1080) and vertical Reels/Shorts/TikTok (1080x1920 -> 1080)
-        short_side = min(w, h) if (w > 0 and h > 0) else max(w, h)
-        # Snap close dimensions to standard tiers (e.g., 1072 -> 1080, 540 -> 480/540)
-        matched_res = short_side
-        for tier in standard_tiers:
-            if abs(short_side - tier) <= 36:
-                matched_res = tier
-                break
+
+        # Normalize any aspect ratio (16:9, 2.35:1 CinemaScope, 9:16 Reels/Shorts, 4:3, 1:1)
+        # against its standard 16:9 / 9:16 bounding-box tier (e.g. 3840x1632 -> 2160, 2560x1088 -> 1440, 1920x816 -> 1080)
+        if w > 0 and h > 0:
+            long_side = max(w, h)
+            short_side = min(w, h)
+            effective_res = max(short_side, round(long_side * 9 / 16))
+        else:
+            effective_res = max(w, h)
+
+        if effective_res < 180:
+            matched_res = 144
+        else:
+            closest_tier = min(standard_tiers, key=lambda t: abs(effective_res - t))
+            tol = max(36, round(closest_tier * 0.07))
+            matched_res = closest_tier if abs(effective_res - closest_tier) <= tol else effective_res
 
         sz = f.get("filesize") or f.get("filesize_approx") or 0
-        has_audio = f.get("acodec") not in (None, "none")
+        has_audio = (f.get("acodec") or "none").lower() != "none"
         total_est = sz if (sz and has_audio) else (sz + best_audio_size if sz else 0)
         is_h264 = vcodec.startswith(("avc", "h264"))
+        is_vp9 = vcodec.startswith(("vp9", "vp09"))
+        is_preferred_codec = is_h264 or is_vp9
         fps = f.get("fps") or 0
+        dims = f"{w}×{h}" if (w > 0 and h > 0) else None
 
         existing = buckets.get(matched_res)
         if not existing:
             buckets[matched_res] = {
                 "resolution": matched_res,
-                "filesize_approx": total_est or None,
+                "dimensions": dims,
+                "best_preferred_size": total_est if (total_est and is_preferred_codec) else 0,
+                "best_any_size": total_est or 0,
+                "best_h264_size": total_est if (total_est and is_h264) else 0,
                 "fps": fps or None,
                 "has_h264": is_h264,
             }
         else:
-            if total_est and (not existing["filesize_approx"] or total_est > existing["filesize_approx"]):
-                existing["filesize_approx"] = total_est
+            if dims and not existing["dimensions"]:
+                existing["dimensions"] = dims
+            if total_est and total_est > existing["best_any_size"]:
+                existing["best_any_size"] = total_est
+            if total_est and is_preferred_codec and total_est > existing["best_preferred_size"]:
+                existing["best_preferred_size"] = total_est
+            if total_est and is_h264 and total_est > existing["best_h264_size"]:
+                existing["best_h264_size"] = total_est
             if fps and (not existing["fps"] or fps > existing["fps"]):
                 existing["fps"] = fps
             if is_h264:
                 existing["has_h264"] = True
 
     tier_labels = {
+        4320: ("8K Ultra HD (4320p)", "8K"),
         2160: ("4K Ultra HD (2160p)", "4K"),
         1440: ("2K QHD (1440p)", "2K"),
         1080: ("Full HD (1080p)", "FHD"),
@@ -309,19 +338,24 @@ def _build_format_options(info: dict[str, Any]) -> list[FormatOption]:
         480: ("SD (480p)", None),
         360: ("Düşük (360p)", None),
         240: ("Veri Tasarrufu (240p)", None),
+        144: ("En Düşük (144p)", None),
     }
 
     result: list[FormatOption] = []
     for res in sorted(buckets.keys(), reverse=True):
         b = buckets[res]
         label, badge = tier_labels.get(res, (f"{res}p Video", "HD" if res >= 720 else None))
+        est_size = b["best_preferred_size"] or b["best_any_size"] or None
+        h264_size = b["best_h264_size"] or None
         result.append(
             FormatOption(
                 id=str(res),
                 label=label,
                 resolution=res,
+                dimensions=b["dimensions"],
                 ext="mp4",
-                filesize_approx=b["filesize_approx"],
+                filesize_approx=est_size,
+                filesize_h264=h264_size,
                 fps=b["fps"],
                 has_h264=b["has_h264"],
                 badge=badge,
@@ -566,7 +600,7 @@ def _probe_media(filepath: Path) -> tuple[list[dict[str, Any]], float | None]:
                     "-v",
                     "error",
                     "-show_entries",
-                    "stream=codec_type,codec_name,codec_tag_string,profile:format=duration",
+                    "stream=codec_type,codec_name,codec_tag_string,profile,width,height:format=duration",
                     "-of",
                     "json",
                     str(filepath),
@@ -613,12 +647,17 @@ def _probe_media(filepath: Path) -> tuple[list[dict[str, Any]], float | None]:
             rest = m_st.group(3)
             rest_lower = rest.lower()
             tag = "hvc1" if "hvc1" in rest_lower else ("avc1" if "avc1" in rest_lower else "")
+            m_dim = re.search(r",\s*(\d{2,5})x(\d{2,5})(?:[\s,\[])", rest)
+            sw = int(m_dim.group(1)) if m_dim else None
+            sh = int(m_dim.group(2)) if m_dim else None
             streams_out.append(
                 {
                     "codec_type": kind,
                     "codec_name": cname,
                     "codec_tag_string": tag,
                     "profile": rest,
+                    "width": sw,
+                    "height": sh,
                 }
             )
         return streams_out, dur
@@ -653,10 +692,13 @@ def _ensure_compatible_mp4(
 
     vcodec = (v_stream.get("codec_name") or "").lower()
     vtag = (v_stream.get("codec_tag_string") or "").lower()
+    v_max_dim = max(int(v_stream.get("width") or 0), int(v_stream.get("height") or 0))
     acodec = (a_stream.get("codec_name") or "").lower() if a_stream else None
     aprofile = (a_stream.get("profile") or "").lower() if a_stream else ""
 
-    need_video_reencode = iphone_compatible and vcodec not in ("h264", "hevc")
+    # On cloud free tier (0.1 CPU / 512MB RAM), avoid software libx264 re-encoding above 1080p to prevent OOM/timeouts
+    can_reencode_video = not (CLOUD_MODE and v_max_dim > 1960)
+    need_video_reencode = iphone_compatible and can_reencode_video and vcodec not in ("h264", "hevc")
     need_hvc1_tag = iphone_compatible and vcodec == "hevc" and vtag != "hvc1"
     # Also transcode xHE-AAC / USAC (mp4a.40.42) to standard AAC-LC so audio never goes silent
     need_audio_aac = acodec is not None and (
@@ -677,7 +719,7 @@ def _ensure_compatible_mp4(
     if need_video_reencode:
         on_status("Uyumlu formata dönüştürülüyor (H.264)...")
         preset = "ultrafast" if CLOUD_MODE else "veryfast"
-        crf = "24" if CLOUD_MODE else "22"
+        crf = "23" if CLOUD_MODE else "18"
         extra_threads = ["-threads", "2"] if CLOUD_MODE else []
         cmd.extend(["-c:v", "libx264", "-preset", preset, "-crf", crf, "-pix_fmt", "yuv420p", *extra_threads])
     else:
@@ -1083,27 +1125,57 @@ class DownloadQueueManager:
                 postprocessors.append({"key": "EmbedThumbnail"})
         else:
             # Prefer standard AAC/M4A over Instagram's xHE-AAC (mp4a.40.42) so audio never drops
+            a_sel = "ba[acodec!*=40.42][acodec!*=usac]/ba"
+            q_val = (req.quality or "best").strip()
+
             if force_progressive:
                 opts["format"] = "b[ext=mp4]/b"
-            else:
-                opts["format"] = "bv*+ba[acodec!*=40.42][acodec!*=usac]/bv*+ba/b"
-            opts["merge_output_format"] = "mp4"
+                sort_rules = ["vcodec:h264", "acodec:aac:m4a", "ext:mp4:m4a"]
+            elif q_val != "best" and q_val.isdigit():
+                target_tier = int(q_val)
+                max_s = target_tier + 24
+                max_l = round(target_tier * 16 / 9) + 36
+                min_s = int(target_tier * 0.82)
+                min_l = int(target_tier * 16 / 9 * 0.82)
 
-            sort_rules: list[str] = []
-            is_ultra_hd = req.quality in ("2160", "1440")
-            if req.iphone_compatible and not is_ultra_hd:
-                # Prioritize native H.264 upfront so <=1080p never stalls at 99% re-encoding VP9
-                sort_rules.append("vcodec:h264")
-                if req.quality and req.quality != "best" and req.quality.isdigit():
-                    sort_rules.append(f"res:{req.quality}")
-                sort_rules.extend(["acodec:aac:m4a", "ext:mp4:m4a"])
-            else:
-                if req.quality and req.quality != "best" and req.quality.isdigit():
-                    sort_rules.append(f"res:{req.quality}")
-                if req.iphone_compatible:
-                    sort_rules.extend(["vcodec:h264", "acodec:aac:m4a", "ext:mp4:m4a"])
+                # 1) Try exact aspect-normalized tier bounding box first (handles 16:9, 2.35:1 CinemaScope, 9:16 Reels, 4:3, 1:1)
+                v_exact = (
+                    f"(bv*[width>={min_l}][width<={max_l}][height<={max_s}]/"
+                    f"bv*[height>={min_l}][height<={max_l}][width<={max_s}]/"
+                    f"bv*[width>={min_s}][width<={max_l}][height>={min_s}][height<={max_s}])"
+                )
+                b_exact = (
+                    f"(b[width>={min_l}][width<={max_l}][height<={max_s}]/"
+                    f"b[height>={min_l}][height<={max_l}][width<={max_s}]/"
+                    f"b[width>={min_s}][width<={max_l}][height>={min_s}][height<={max_s}])"
+                )
+                # 2) Fallback cap for batch/playlist items whose max resolution is lower than target_tier
+                v_cap = (
+                    f"(bv*[width<={max_l}][height<={max_s}]/"
+                    f"bv*[width<={max_s}][height<={max_l}]/"
+                    f"bv*[height<={max_s}])"
+                )
+                b_cap = (
+                    f"(b[width<={max_l}][height<={max_s}]/"
+                    f"b[width<={max_s}][height<={max_l}]/"
+                    f"b[height<={max_s}])"
+                )
+                opts["format"] = (
+                    f"{v_exact}+({a_sel})/{b_exact}/"
+                    f"{v_cap}+({a_sel})/{b_cap}/"
+                    f"bv*+({a_sel})/bv*+ba/b"
+                )
+
+                is_ultra_hd = target_tier >= 1440
+                if req.iphone_compatible and not is_ultra_hd:
+                    sort_rules = ["vcodec:h264", f"res:{target_tier}", "acodec:aac:m4a", "ext:mp4:m4a"]
                 else:
-                    sort_rules.extend(["acodec:aac:m4a", "ext:mp4:m4a"])
+                    sort_rules = ["vcodec:vp9.2:vp9:h264", "acodec:aac:m4a"]
+            else:
+                opts["format"] = f"bv*+({a_sel})/bv*+ba/b"
+                sort_rules = ["vcodec:vp9.2:vp9:h264", "acodec:aac:m4a"]
+
+            opts["merge_output_format"] = "mp4"
             opts["format_sort"] = sort_rules
             postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
 

@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg-oled: #000000;
   --glass-bg: linear-gradient(155deg, rgba(255, 255, 255, 0.068) 0%, rgba(255, 255, 255, 0.022) 100%);
   --glass-elevated: linear-gradient(155deg, rgba(255, 255, 255, 0.095) 0%, rgba(255, 255, 255, 0.035) 100%);
@@ -29,6 +30,39 @@
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Minimalist iOS Liquid Glass Scrollbars (no white track, no arrow buttons) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 94, 0.48);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
 }
 
 html, body {
@@ -856,6 +890,7 @@ select:focus {
 .playlist-list {
   max-height: 400px;
   overflow-y: auto;
+  padding-right: 4px;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -961,6 +996,7 @@ select:focus {
   gap: 9px;
   max-height: 460px;
   overflow-y: auto;
+  padding-right: 4px;
   min-width: 0;
 }
 

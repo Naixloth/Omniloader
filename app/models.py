@@ -13,8 +13,10 @@ class FormatOption(BaseModel):
     id: str
     label: str
     resolution: int | None = None
+    dimensions: str | None = None
     ext: str = "mp4"
     filesize_approx: int | None = None
+    filesize_h264: int | None = None
     fps: float | None = None
     has_h264: bool = False
     badge: str | None = None
